@@ -1,0 +1,148 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+package au.gov.asd.tac.constellation.networkPlugin;
+
+import au.gov.asd.tac.constellation.graph.processing.GraphRecordStoreUtilities;
+import au.gov.asd.tac.constellation.graph.processing.Record;
+import au.gov.asd.tac.constellation.graph.schema.analytic.concept.AnalyticConcept;
+import au.gov.asd.tac.constellation.graph.schema.visual.concept.VisualConcept;
+import au.gov.asd.tac.constellation.utilities.json.JsonUtilities;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
+
+/**
+ * Report Utilities.
+ */
+public class ReportUtilities {
+    
+    private static final Logger LOGGER = Logger.getLogger(ReportUtilities.class.getName());
+    
+    private static final String BASE_URL = "http://172.20.208.127:8080";
+    
+    public static List<Report> getReports(final String userId) throws ParseException {
+        String response = fetchReports(userId);
+        return parseReports(response);
+    }
+    
+    private static String fetchReports(final String userId) {
+        HttpClient client = HttpClient.newHttpClient();
+        
+        Map<String, String> bodyMap = new HashMap();
+        bodyMap.put("userId", userId);
+        String requestBody = JsonUtilities.getMapAsString(bodyMap);
+        
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/reports"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build();
+        
+        String responseString = "";
+        try {
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            responseString = response.body();
+//            CompletableFuture<HttpResponse<String>> responseFuture = client.sendAsync(request, HttpResponse.BodyHandlers.ofString());
+//            responseFuture
+//                    .thenApply(HttpResponse::body)
+//                    .thenAccept((response) -> {
+//                        System.out.println("Response body:\n" + JsonUtilities.prettyPrint(response));
+//                    });
+//            responseFuture.join();
+        } catch (IOException | InterruptedException e) {
+            LOGGER.log(Level.WARNING, e.getMessage());
+        }
+        return responseString;
+    }
+    
+    private static List<Report> parseReports(final String reportsString) throws ParseException {
+        JSONParser parser = new JSONParser();
+        JSONArray jsonReports = (JSONArray) parser.parse(reportsString);
+        
+        List<Report> parsedReports = new ArrayList<>();
+        
+        for (int i = 0; i < jsonReports.size(); i++) {
+            JSONObject report = (JSONObject) jsonReports.get(i);
+            Report parsedReport = parseReport(report);
+            if (parsedReport != null) {
+                parsedReports.add(parsedReport);
+            }
+        }
+        
+        return parsedReports;
+    }
+    
+    /**
+     * Each Report must have the following fields:
+     * internal_user_id
+     */
+    private static Report parseReport(final JSONObject reportJson) {
+        String internalUserId = (String) reportJson.get("internal_user_id");
+        String reportId = (String) reportJson.get("report_id");
+        
+        String sourceIdentifier = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + VisualConcept.VertexAttribute.IDENTIFIER);
+        String sourceType = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + AnalyticConcept.VertexAttribute.TYPE);
+        String sourceEntityId = (String) reportJson.get("source.EntityId"); // TO BE ADDED TO SCHEMA
+        
+        JSONObject sourceOtherAttributesJson = (JSONObject) reportJson.get("source.attributes");
+        Map<String, Object> sourceOtherAttributes = parseAttributes(sourceOtherAttributesJson);
+        
+        String destinationIdentifier = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + VisualConcept.VertexAttribute.IDENTIFIER);
+        String destinationType = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + AnalyticConcept.VertexAttribute.TYPE);
+        String destinationEntityId = (String) reportJson.get("destination.EntityId"); // TO BE ADDED TO SCHEMA
+        
+        JSONObject destinationOtherAttributesJson = (JSONObject) reportJson.get("destination.attributes");
+        Map<String, Object> destinationOtherAttributes = parseAttributes(destinationOtherAttributesJson);
+        
+        JSONObject transactionAttributesJson = (JSONObject) reportJson.get("transaction.attributes");
+        Map<String, Object> transactionAttributes = parseAttributes(transactionAttributesJson);
+        
+        return new Report(
+                internalUserId, reportId, 
+                sourceIdentifier, sourceType, sourceEntityId, sourceOtherAttributes,
+                destinationIdentifier, destinationType, destinationEntityId, destinationOtherAttributes,
+                transactionAttributes
+        );
+    }
+    
+    private static Map<String, Object> parseAttributes(final JSONObject attributesJson) {
+        Map<String, Object> attributes = new HashMap<>();
+        for (Object key : attributesJson.keySet()) {
+            Object value = attributesJson.get(key);
+            attributes.put((String) key, value);
+        }
+        return attributes;
+    }
+    
+    /**
+     * Adds the attributes of a Report instance to the current row of a
+     * RecordStore, specified as a Record. Each Report contains both source and destination
+     * vertices to be added to the RecordStore.
+     *
+     * @param report the Report instance to be added.
+     * @param record the Record to add the Report to.
+     */
+    public static void addReportToRecord(final Report report, final Record record) {
+        record.set(GraphRecordStoreUtilities.SOURCE + VisualConcept.VertexAttribute.IDENTIFIER, report.getSourceIdentifier());
+        record.set(GraphRecordStoreUtilities.SOURCE + AnalyticConcept.VertexAttribute.TYPE, report.getSourceType());
+        record.set(GraphRecordStoreUtilities.DESTINATION + VisualConcept.VertexAttribute.IDENTIFIER, report.getDestinationIdentifier());
+        record.set(GraphRecordStoreUtilities.DESTINATION + AnalyticConcept.VertexAttribute.TYPE, report.getDestinationType());
+        record.set(GraphRecordStoreUtilities.TRANSACTION + VisualConcept.VertexAttribute.IDENTIFIER, report.getReportId());
+    }
+    
+}
+ 
