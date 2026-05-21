@@ -4,9 +4,17 @@
  */
 package au.gov.asd.tac.constellation.networkPlugin;
 
+import au.gov.asd.tac.constellation.graph.GraphElementType;
+import au.gov.asd.tac.constellation.graph.attribute.BooleanAttributeDescription;
+import au.gov.asd.tac.constellation.graph.attribute.FloatAttributeDescription;
+import au.gov.asd.tac.constellation.graph.attribute.IntegerAttributeDescription;
+import au.gov.asd.tac.constellation.graph.attribute.StringAttributeDescription;
+import au.gov.asd.tac.constellation.graph.attribute.ZonedDateTimeAttributeDescription;
 import au.gov.asd.tac.constellation.graph.processing.GraphRecordStoreUtilities;
 import au.gov.asd.tac.constellation.graph.processing.Record;
 import au.gov.asd.tac.constellation.graph.schema.analytic.concept.AnalyticConcept;
+import au.gov.asd.tac.constellation.graph.schema.analytic.concept.TemporalConcept;
+import au.gov.asd.tac.constellation.graph.schema.attribute.SchemaAttribute;
 import au.gov.asd.tac.constellation.graph.schema.visual.concept.VisualConcept;
 import au.gov.asd.tac.constellation.utilities.json.JsonUtilities;
 import java.io.IOException;
@@ -14,10 +22,13 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.json.simple.JSONArray;
@@ -42,16 +53,17 @@ public class ReportUtilities {
     // Anything that isn't a source/destination attribute is considered a transaction attribute
     private static final String TRANSACTION_ATTRIBUTES = "transaction.attributes";
     
-    public static List<Report> getReports(final String userId) throws ParseException {
-        String response = fetchReports(userId);
+    public static List<Report> getReports(final String userId, final String reportId) throws ParseException, IOException, InterruptedException {
+        String response = fetchReports(userId, reportId);
         return parseReports(response);
     }
     
-    private static String fetchReports(final String userId) {
+    private static String fetchReports(final String userId, final String reportId) throws IOException, InterruptedException {
         HttpClient client = HttpClient.newHttpClient();
         
         Map<String, String> bodyMap = new HashMap();
         bodyMap.put("userId", userId);
+        bodyMap.put("reportId", reportId);
         String requestBody = JsonUtilities.getMapAsString(bodyMap);
         
         HttpRequest request = HttpRequest.newBuilder()
@@ -59,22 +71,9 @@ public class ReportUtilities {
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build();
-        
-        String responseString = "";
-        try {
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            responseString = response.body();
-//            CompletableFuture<HttpResponse<String>> responseFuture = client.sendAsync(request, HttpResponse.BodyHandlers.ofString());
-//            responseFuture
-//                    .thenApply(HttpResponse::body)
-//                    .thenAccept((response) -> {
-//                        System.out.println("Response body:\n" + JsonUtilities.prettyPrint(response));
-//                    });
-//            responseFuture.join();
-        } catch (IOException | InterruptedException e) {
-            LOGGER.log(Level.WARNING, e.getMessage());
-        }
-        return responseString;
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        return response.body();
     }
     
     private static List<Report> parseReports(final String reportsString) throws ParseException {
@@ -161,6 +160,53 @@ public class ReportUtilities {
 
         record.set(GraphRecordStoreUtilities.TRANSACTION + VisualConcept.VertexAttribute.IDENTIFIER, report.getReportId());
         record.set(GraphRecordStoreUtilities.TRANSACTION + AnalyticConcept.VertexAttribute.TYPE, ReportConcept.TransactionType.COMMUNICATION);
+    
+        setAttributesInRecord(record, report.getSourceOtherAttributes(), GraphRecordStoreUtilities.SOURCE);
+        setAttributesInRecord(record, report.getDestinationOtherAttributes(), GraphRecordStoreUtilities.DESTINATION);
+        setAttributesInRecord(record, report.getTransactionAttributes(), GraphRecordStoreUtilities.TRANSACTION);
+    }
+    
+    private static void setAttributesInRecord(final Record record, Map<String, Object> attributes, String attributeType) {
+        GraphElementType elementType = attributeType.equals(GraphRecordStoreUtilities.TRANSACTION) ? GraphElementType.TRANSACTION : GraphElementType.VERTEX;
+        for (String field : attributes.keySet()) {
+            SchemaAttribute attribute = createSchemaAttribute(attributes, field, elementType);
+            String attributeNameWithKey = getSchemaAttributeNameWithKey(attribute);
+            record.set(attributeType + attributeNameWithKey, attributes.get(field));
+        }
+    }
+    
+    private static SchemaAttribute createSchemaAttribute(Map<String, Object> attributeMap, String field, GraphElementType category) {
+        Object value = attributeMap.get(field);
+        String type = getValueType(value);
+        
+        SchemaAttribute attribute = new SchemaAttribute.Builder(category, type, field)
+                .create()
+                .build();
+        
+        return attribute;
+    }
+    
+    private static String getSchemaAttributeNameWithKey(SchemaAttribute attribute) {
+        String attributeType = attribute.getAttributeType();
+        return attribute.getName() + "<" + attributeType + ">";
+    }
+    
+    private static String getValueType(Object value) {
+        try {
+            Instant.parse(value.toString());
+            return ZonedDateTimeAttributeDescription.ATTRIBUTE_NAME;
+        } catch (DateTimeParseException e) { // Continue checking other types
+        }
+        
+        if (value instanceof Boolean) {
+            return BooleanAttributeDescription.ATTRIBUTE_NAME;
+        } else if (value instanceof Float) {
+            return FloatAttributeDescription.ATTRIBUTE_NAME;
+        } else if (value instanceof Integer) {
+            return IntegerAttributeDescription.ATTRIBUTE_NAME;
+        } else {
+            return StringAttributeDescription.ATTRIBUTE_NAME;
+        }
     }
     
 }
