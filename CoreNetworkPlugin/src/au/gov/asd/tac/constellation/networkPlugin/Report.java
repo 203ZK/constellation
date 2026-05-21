@@ -18,12 +18,12 @@ public class Report {
     private final String reportId;
     
     private final String sourceIdentifier;
-    private final String sourceType;
+    private final String sourceEntityType;
     private final String sourceEntityId;
     private final Map<String, Object> sourceOtherAttributes;
     
     private final String destinationIdentifier;
-    private final String destinationType;
+    private final String destinationEntityType;
     private final String destinationEntityId;
     private final Map<String, Object> destinationOtherAttributes;
     
@@ -40,11 +40,11 @@ public class Report {
         this.internalUserId = internalUserId;
         this.reportId = reportId;
         this.sourceIdentifier = sourceIdentifier;
-        this.sourceType = sourceType;
+        this.sourceEntityType = sourceType;
         this.sourceEntityId = sourceEntityId;
         this.sourceOtherAttributes = sourceOtherAttributes;
         this.destinationIdentifier = destinationIdentifier;
-        this.destinationType = destinationType;
+        this.destinationEntityType = destinationType;
         this.destinationEntityId = destinationEntityId;
         this.destinationOtherAttributes = destinationOtherAttributes;
         this.transactionAttributes = transactionAttributes;
@@ -62,8 +62,8 @@ public class Report {
         return this.sourceIdentifier;
     }
     
-    public String getSourceType() {
-        return this.sourceType;
+    public String getSourceEntityType() {
+        return this.sourceEntityType;
     }
     
     public String getSourceEntityId() {
@@ -78,8 +78,8 @@ public class Report {
         return this.destinationIdentifier;
     }
     
-    public String getDestinationType() {
-        return this.destinationType;
+    public String getDestinationEntityType() {
+        return this.destinationEntityType;
     }
     
     public String getDestinationEntityId() {

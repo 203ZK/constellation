@@ -34,6 +34,14 @@ public class ReportUtilities {
     
     private static final String BASE_URL = "http://172.20.208.127:8080";
     
+    // These are fields that have to be aligned with the server
+    private static final String INTERNAL_USER_ID = "internal_user_id";
+    private static final String REPORT_ID = "report_id";
+    private static final String SOURCE_OTHER_ATTRIBUTES = "source.attributes";
+    private static final String DESTINATION_OTHER_ATTRIBUTES = "destination.attributes";
+    // Anything that isn't a source/destination attribute is considered a transaction attribute
+    private static final String TRANSACTION_ATTRIBUTES = "transaction.attributes";
+    
     public static List<Report> getReports(final String userId) throws ParseException {
         String response = fetchReports(userId);
         return parseReports(response);
@@ -87,28 +95,31 @@ public class ReportUtilities {
     }
     
     /**
-     * Each Report must have the following fields:
-     * internal_user_id
+     * Each Report must have the following fields.
+     * - Metadata fields: internal_user_id, report_id, 
+     * - Source/destination identifier, (entity) type, entity ID,
+     * - Source/destination additional attributes
+     * - Transaction attributes
      */
     private static Report parseReport(final JSONObject reportJson) {
-        String internalUserId = (String) reportJson.get("internal_user_id");
-        String reportId = (String) reportJson.get("report_id");
+        String internalUserId = (String) reportJson.get(INTERNAL_USER_ID);
+        String reportId = (String) reportJson.get(REPORT_ID);
         
         String sourceIdentifier = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + VisualConcept.VertexAttribute.IDENTIFIER);
         String sourceType = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + AnalyticConcept.VertexAttribute.TYPE);
-        String sourceEntityId = (String) reportJson.get("source.EntityId"); // TO BE ADDED TO SCHEMA
+        String sourceEntityId = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + ReportConcept.VertexAttribute.ENTITY_ID);
         
-        JSONObject sourceOtherAttributesJson = (JSONObject) reportJson.get("source.attributes");
+        JSONObject sourceOtherAttributesJson = (JSONObject) reportJson.get(SOURCE_OTHER_ATTRIBUTES);
         Map<String, Object> sourceOtherAttributes = parseAttributes(sourceOtherAttributesJson);
         
         String destinationIdentifier = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + VisualConcept.VertexAttribute.IDENTIFIER);
         String destinationType = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + AnalyticConcept.VertexAttribute.TYPE);
-        String destinationEntityId = (String) reportJson.get("destination.EntityId"); // TO BE ADDED TO SCHEMA
+        String destinationEntityId = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + ReportConcept.VertexAttribute.ENTITY_ID);
         
-        JSONObject destinationOtherAttributesJson = (JSONObject) reportJson.get("destination.attributes");
+        JSONObject destinationOtherAttributesJson = (JSONObject) reportJson.get(DESTINATION_OTHER_ATTRIBUTES);
         Map<String, Object> destinationOtherAttributes = parseAttributes(destinationOtherAttributesJson);
         
-        JSONObject transactionAttributesJson = (JSONObject) reportJson.get("transaction.attributes");
+        JSONObject transactionAttributesJson = (JSONObject) reportJson.get(TRANSACTION_ATTRIBUTES);
         Map<String, Object> transactionAttributes = parseAttributes(transactionAttributesJson);
         
         return new Report(
@@ -119,6 +130,9 @@ public class ReportUtilities {
         );
     }
     
+    /**
+     * Parses a JSON map as a map of attributes.
+    */
     private static Map<String, Object> parseAttributes(final JSONObject attributesJson) {
         Map<String, Object> attributes = new HashMap<>();
         for (Object key : attributesJson.keySet()) {
@@ -138,10 +152,15 @@ public class ReportUtilities {
      */
     public static void addReportToRecord(final Report report, final Record record) {
         record.set(GraphRecordStoreUtilities.SOURCE + VisualConcept.VertexAttribute.IDENTIFIER, report.getSourceIdentifier());
-        record.set(GraphRecordStoreUtilities.SOURCE + AnalyticConcept.VertexAttribute.TYPE, report.getSourceType());
+        record.set(GraphRecordStoreUtilities.SOURCE + AnalyticConcept.VertexAttribute.TYPE, ReportConcept.VertexType.NETWORK_ENTITY);
+        record.set(GraphRecordStoreUtilities.SOURCE + ReportConcept.VertexAttribute.ENTITY_ID, report.getSourceEntityId());
+        
         record.set(GraphRecordStoreUtilities.DESTINATION + VisualConcept.VertexAttribute.IDENTIFIER, report.getDestinationIdentifier());
-        record.set(GraphRecordStoreUtilities.DESTINATION + AnalyticConcept.VertexAttribute.TYPE, report.getDestinationType());
+        record.set(GraphRecordStoreUtilities.DESTINATION + AnalyticConcept.VertexAttribute.TYPE, ReportConcept.VertexType.NETWORK_ENTITY);
+        record.set(GraphRecordStoreUtilities.DESTINATION + ReportConcept.VertexAttribute.ENTITY_ID, report.getDestinationEntityId());
+
         record.set(GraphRecordStoreUtilities.TRANSACTION + VisualConcept.VertexAttribute.IDENTIFIER, report.getReportId());
+        record.set(GraphRecordStoreUtilities.TRANSACTION + AnalyticConcept.VertexAttribute.TYPE, ReportConcept.TransactionType.COMMUNICATION);
     }
     
 }
