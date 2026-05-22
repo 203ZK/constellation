@@ -13,11 +13,12 @@ import au.gov.asd.tac.constellation.graph.attribute.ZonedDateTimeAttributeDescri
 import au.gov.asd.tac.constellation.graph.processing.GraphRecordStoreUtilities;
 import au.gov.asd.tac.constellation.graph.processing.Record;
 import au.gov.asd.tac.constellation.graph.schema.analytic.concept.AnalyticConcept;
-import au.gov.asd.tac.constellation.graph.schema.analytic.concept.TemporalConcept;
 import au.gov.asd.tac.constellation.graph.schema.attribute.SchemaAttribute;
 import au.gov.asd.tac.constellation.graph.schema.visual.concept.VisualConcept;
+import au.gov.asd.tac.constellation.plugins.PluginException;
 import au.gov.asd.tac.constellation.utilities.json.JsonUtilities;
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -28,9 +29,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import javax.naming.AuthenticationException;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -41,11 +40,11 @@ import org.json.simple.parser.ParseException;
  */
 public class ReportUtilities {
     
-    private static final Logger LOGGER = Logger.getLogger(ReportUtilities.class.getName());
-    
     private static final String BASE_URL = "http://172.20.208.127:8080";
+//    private static final String PATH_AUTHENTICATION = "/auth";
+    private static final String PATH_FETCH_REPORTS = "/reports";
     
-    // These are fields that have to be aligned with the server
+    // These fields have to be aligned with the server
     private static final String INTERNAL_USER_ID = "internal_user_id";
     private static final String REPORT_ID = "report_id";
     private static final String SOURCE_OTHER_ATTRIBUTES = "source.attributes";
@@ -53,12 +52,51 @@ public class ReportUtilities {
     // Anything that isn't a source/destination attribute is considered a transaction attribute
     private static final String TRANSACTION_ATTRIBUTES = "transaction.attributes";
     
-    public static List<Report> getReports(final String userId, final String reportId) throws ParseException, IOException, InterruptedException {
-        String response = fetchReports(userId, reportId);
+//    public static List<String> getReportIds(final String userId, final String apiKey) throws ParseException, IOException, InterruptedException {
+//        String response = authenticate(userId, apiKey);
+//        return parseReportIds(response);
+//    }
+//    
+//    private static List<String> parseReportIds(final String reportIdsString) throws ParseException {
+//        JSONParser parser = new JSONParser();
+//        JSONArray jsonReportIds = (JSONArray) parser.parse(reportIdsString);
+//        
+//        List<String> parsedReportIds = new ArrayList<>();
+//        
+//        for (int i = 0; i < jsonReportIds.size(); i++) {
+//            String reportId = (String) jsonReportIds.get(i);
+//            parsedReportIds.add(reportId);
+//        }
+//        
+//        return parsedReportIds;
+//    }
+//    
+//    private static String authenticate(final String userId, final String apiKey) throws IOException, InterruptedException {
+//        HttpClient client = HttpClient.newHttpClient();
+//        
+//        Map<String, String> bodyMap = new HashMap();
+//        bodyMap.put("userId", userId);
+//        String requestBody = JsonUtilities.getMapAsString(bodyMap);
+//        
+//        HttpRequest request = HttpRequest.newBuilder()
+//                .uri(URI.create(BASE_URL + PATH_AUTHENTICATION))
+//                .header("Content-Type", "application/json")
+//                .header("X-API-Key", apiKey)
+//                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+//                .build();
+//
+//        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+//        return response.body();
+//    }
+    
+    public static List<Report> getReports(
+            final String userId, final String apiKey, final String reportId
+    ) throws AuthenticationException, ParseException, IOException, InterruptedException {
+        String response = fetchReports(userId, apiKey, reportId);
         return parseReports(response);
     }
     
-    private static String fetchReports(final String userId, final String reportId) throws IOException, InterruptedException {
+    private static String fetchReports(final String userId, final String apiKey, final String reportId) throws AuthenticationException, IOException, InterruptedException {
         HttpClient client = HttpClient.newHttpClient();
         
         Map<String, String> bodyMap = new HashMap();
@@ -67,12 +105,17 @@ public class ReportUtilities {
         String requestBody = JsonUtilities.getMapAsString(bodyMap);
         
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(BASE_URL + "/reports"))
+                .uri(URI.create(BASE_URL + PATH_FETCH_REPORTS))
                 .header("Content-Type", "application/json")
+                .header("X-API-KEY", apiKey)
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() == HttpURLConnection.HTTP_FORBIDDEN) {
+            throw new AuthenticationException("Wrong API key!");
+        }
+        
         return response.body();
     }
     

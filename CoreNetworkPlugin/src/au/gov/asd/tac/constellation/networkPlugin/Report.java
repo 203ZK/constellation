@@ -4,24 +4,7 @@
  */
 package au.gov.asd.tac.constellation.networkPlugin;
 
-import au.gov.asd.tac.constellation.graph.GraphElementType;
-import au.gov.asd.tac.constellation.graph.attribute.BooleanAttributeDescription;
-import au.gov.asd.tac.constellation.graph.attribute.FloatAttributeDescription;
-import au.gov.asd.tac.constellation.graph.attribute.IntegerAttributeDescription;
-import au.gov.asd.tac.constellation.graph.attribute.StringAttributeDescription;
-import au.gov.asd.tac.constellation.graph.attribute.ZonedDateTimeAttributeDescription;
-import au.gov.asd.tac.constellation.graph.schema.attribute.SchemaAttribute;
-import java.lang.reflect.Field;
-import java.time.Instant;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.time.format.ResolverStyle;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
 
 /**
@@ -108,26 +91,6 @@ public class Report {
     
     public Map<String, Object> getTransactionAttributes() {
         return this.transactionAttributes;
-    }
-    
-    private String getValueType(Object value) {
-//        final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSX")
-//            .withResolverStyle(ResolverStyle.STRICT);
-        try {
-            Instant.parse(value.toString());
-            return ZonedDateTimeAttributeDescription.ATTRIBUTE_NAME;
-        } catch (DateTimeParseException e) { // Continue checking other types
-        }
-        
-        if (value instanceof Boolean) {
-            return BooleanAttributeDescription.ATTRIBUTE_NAME;
-        } else if (value instanceof Float) {
-            return FloatAttributeDescription.ATTRIBUTE_NAME;
-        } else if (value instanceof Integer) {
-            return IntegerAttributeDescription.ATTRIBUTE_NAME;
-        } else {
-            return StringAttributeDescription.ATTRIBUTE_NAME;
-        }
     }
     
     @Override
