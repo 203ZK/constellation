@@ -10,6 +10,8 @@ import au.gov.asd.tac.constellation.plugins.Plugin;
 import au.gov.asd.tac.constellation.plugins.PluginException;
 import au.gov.asd.tac.constellation.plugins.PluginInteraction;
 import au.gov.asd.tac.constellation.plugins.PluginNotificationLevel;
+import au.gov.asd.tac.constellation.plugins.gui.PluginParametersDialog;
+import au.gov.asd.tac.constellation.plugins.gui.PluginParametersSwingDialog;
 import au.gov.asd.tac.constellation.plugins.parameters.PluginParameter;
 import au.gov.asd.tac.constellation.plugins.parameters.PluginParameters;
 import au.gov.asd.tac.constellation.plugins.parameters.types.StringParameterType;
@@ -20,7 +22,6 @@ import au.gov.asd.tac.constellation.views.dataaccess.templates.RecordStoreQueryP
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
 import javax.naming.AuthenticationException;
 import org.json.simple.parser.ParseException;
 import org.openide.util.NbBundle;
@@ -36,8 +37,6 @@ import org.openide.util.lookup.ServiceProviders;
 })
 @NbBundle.Messages("ImportNetworkReportsPlugin=Import Network Reports")
 public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implements DataAccessPlugin {
-    
-    private static final Logger LOGGER = Logger.getLogger(ReportUtilities.class.getName());
 
     private static final String USER_ID_PARAMETER_ID = 
             PluginParameter.buildId(ImportNetworkReportsPlugin.class, "userId");
@@ -64,12 +63,6 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         StringParameterType.setLines(userIdParameter, 1);
         parameters.addParameter(userIdParameter);
         
-        final PluginParameter<StringParameterValue> apiKeyParameter = StringParameterType.build(API_KEY_PARAMETER_ID);
-        apiKeyParameter.setName(API_KEY_PARAMETER_LABEL);
-        apiKeyParameter.setDescription(API_KEY_PARAMETER_DESCRIPTION);
-        StringParameterType.setLines(apiKeyParameter, 1);
-        parameters.addParameter(apiKeyParameter);
-        
         final PluginParameter<StringParameterValue> reportIdParameter = StringParameterType.build(REPORT_ID_PARAMETER_ID);
         reportIdParameter.setName(REPORT_ID_PARAMETER_LABEL);
         reportIdParameter.setDescription(REPORT_ID_PARAMETER_DESCRIPTION);
@@ -79,53 +72,46 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         return parameters;
     }
     
-//    @Override
-//    public void updateParameters(final Graph graph, final PluginParameters parameters) {
-//        final String userIdParameterString = parameters.getStringValue(USER_ID_PARAMETER_ID);
-//        final String apiKeyParameterString = parameters.getStringValue(API_KEY_PARAMETER_ID);
-//        
-//        if (userIdParameterString == null || apiKeyParameterString == null) {
-//            return;
-//        }
-//        
-//        final ReadableGraph readableGraph = graph.getReadableGraph();
-//        
-//        List<String> reportIds = new ArrayList<>();
-//        try {
-//            reportIds = ReportUtilities.getReportIds(userIdParameterString, apiKeyParameterString);
-//        } catch (ParseException | IOException | InterruptedException e) {
-//            LOGGER.log(Level.WARNING, "Could not authenticate user ID: {0}", userIdParameterString);
-//        } finally {
-//            readableGraph.release();
-//        }
-//        
-//        SingleChoiceParameterType.setOptions(
-//                (PluginParameter<SingleChoiceParameterType.SingleChoiceParameterValue>) parameters.getParameters().get(REPORT_ID_PARAMETER_ID), 
-//                reportIds);
-//    }
-    
     @Override
     protected RecordStore query(RecordStore query, PluginInteraction interaction, PluginParameters parameters) throws InterruptedException, PluginException {
-        List<Report> reports = new ArrayList<>();
-        final String userIdParameterString = parameters.getStringValue(USER_ID_PARAMETER_ID);
-        final String apiKeyParameterString = parameters.getStringValue(API_KEY_PARAMETER_ID);
-        final String reportIdParameterString = parameters.getStringValue(REPORT_ID_PARAMETER_ID);
+        final PluginParameters dlgParams = new PluginParameters();
+        final PluginParameter<StringParameterValue> apiKeyParameter = StringParameterType.build(API_KEY_PARAMETER_ID);
+        apiKeyParameter.setName(API_KEY_PARAMETER_LABEL);
+        apiKeyParameter.setDescription(API_KEY_PARAMETER_DESCRIPTION);
+        dlgParams.addParameter(apiKeyParameter);
         
-        try {
-            reports = ReportUtilities.getReports(userIdParameterString, apiKeyParameterString, reportIdParameterString);
-        } catch (AuthenticationException e) {
-            throw new PluginException(PluginNotificationLevel.ERROR, e.getExplanation());
-        } catch (ParseException | IOException e) {
-            throw new PluginException(PluginNotificationLevel.WARNING, e.getMessage());
-        }
+        final PluginParametersSwingDialog dialog = new PluginParametersSwingDialog("Input API Key", dlgParams);
+        dialog.showAndWait();
+        final boolean isOk = PluginParametersDialog.OK.equals(dialog.getResult());
         
-        int currentStep = 0;
         final RecordStore result = new GraphRecordStore();
         
-        for (Report report : reports) {
-            result.add();
-            ReportUtilities.addReportToRecord(report, result);
-            interaction.setProgress(currentStep++, reports.size(), "Processing: " + report.getReportId(), true);
+        if (isOk) {
+            final String apiKey = dlgParams.getStringValue(API_KEY_PARAMETER_ID);
+            final String userId = parameters.getStringValue(USER_ID_PARAMETER_ID);
+            final String reportId = parameters.getStringValue(REPORT_ID_PARAMETER_ID);
+            
+            List<Report> reports = new ArrayList<>();
+        
+            try {
+                reports = ReportUtilities.getReports(userId, apiKey, reportId);
+            } catch (AuthenticationException e) {
+                throw new PluginException(PluginNotificationLevel.ERROR, e.getExplanation());
+            } catch (ParseException | IOException e) {
+                throw new PluginException(PluginNotificationLevel.WARNING, e.getMessage());
+            }
+        
+            int currentStep = 0;
+            final int numReports = reports.size();
+            
+            for (Report report : reports) {
+                result.add();
+                ReportUtilities.addReportToRecord(report, result);
+                interaction.setProgress(
+                        currentStep++, numReports, 
+                        "Processing report " + (currentStep + 1) + "/" + numReports, 
+                        true);
+            }
         }
         
         return result;
