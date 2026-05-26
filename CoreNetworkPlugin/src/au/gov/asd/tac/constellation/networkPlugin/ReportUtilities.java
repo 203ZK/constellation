@@ -40,8 +40,7 @@ import org.json.simple.parser.ParseException;
  */
 public class ReportUtilities {
     
-    private static final String BASE_URL = "http://172.20.208.127:8080";
-//    private static final String PATH_AUTHENTICATION = "/auth";
+    private static final String BASE_URL = "http://localhost:8080";
     private static final String PATH_FETCH_REPORTS = "/reports";
     
     // These fields have to be aligned with the server
@@ -52,42 +51,6 @@ public class ReportUtilities {
     // Anything that isn't a source/destination attribute is considered a transaction attribute
     private static final String TRANSACTION_ATTRIBUTES = "transaction.attributes";
     
-//    public static List<String> getReportIds(final String userId, final String apiKey) throws ParseException, IOException, InterruptedException {
-//        String response = authenticate(userId, apiKey);
-//        return parseReportIds(response);
-//    }
-//    
-//    private static List<String> parseReportIds(final String reportIdsString) throws ParseException {
-//        JSONParser parser = new JSONParser();
-//        JSONArray jsonReportIds = (JSONArray) parser.parse(reportIdsString);
-//        
-//        List<String> parsedReportIds = new ArrayList<>();
-//        
-//        for (int i = 0; i < jsonReportIds.size(); i++) {
-//            String reportId = (String) jsonReportIds.get(i);
-//            parsedReportIds.add(reportId);
-//        }
-//        
-//        return parsedReportIds;
-//    }
-//    
-//    private static String authenticate(final String userId, final String apiKey) throws IOException, InterruptedException {
-//        HttpClient client = HttpClient.newHttpClient();
-//        
-//        Map<String, String> bodyMap = new HashMap();
-//        bodyMap.put("userId", userId);
-//        String requestBody = JsonUtilities.getMapAsString(bodyMap);
-//        
-//        HttpRequest request = HttpRequest.newBuilder()
-//                .uri(URI.create(BASE_URL + PATH_AUTHENTICATION))
-//                .header("Content-Type", "application/json")
-//                .header("X-API-Key", apiKey)
-//                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-//                .build();
-//
-//        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-//        return response.body();
-//    }
     
     public static List<Report> getReports(
             final String userId, final String apiKey, final String reportId
@@ -201,8 +164,8 @@ public class ReportUtilities {
         record.set(GraphRecordStoreUtilities.DESTINATION + AnalyticConcept.VertexAttribute.TYPE, ReportConcept.VertexType.NETWORK_ENTITY);
         record.set(GraphRecordStoreUtilities.DESTINATION + ReportConcept.VertexAttribute.ENTITY_ID, report.getDestinationEntityId());
 
-        record.set(GraphRecordStoreUtilities.TRANSACTION + VisualConcept.VertexAttribute.IDENTIFIER, report.getReportId());
-        record.set(GraphRecordStoreUtilities.TRANSACTION + AnalyticConcept.VertexAttribute.TYPE, ReportConcept.TransactionType.COMMUNICATION);
+        record.set(GraphRecordStoreUtilities.TRANSACTION + VisualConcept.TransactionAttribute.IDENTIFIER, report.getReportId());
+        record.set(GraphRecordStoreUtilities.TRANSACTION + AnalyticConcept.TransactionAttribute.TYPE, ReportConcept.TransactionType.COMMUNICATION);
     
         setAttributesInRecord(record, report.getSourceOtherAttributes(), GraphRecordStoreUtilities.SOURCE);
         setAttributesInRecord(record, report.getDestinationOtherAttributes(), GraphRecordStoreUtilities.DESTINATION);

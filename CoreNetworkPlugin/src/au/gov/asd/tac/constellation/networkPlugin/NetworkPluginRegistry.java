@@ -9,4 +9,5 @@ package au.gov.asd.tac.constellation.networkPlugin;
  */
 public class NetworkPluginRegistry {
     public static final String IMPORT_NETWORK_REPORTS = ImportNetworkReportsPlugin.class.getName();
+    public static final String NETWORK_CONNECTIONS = NetworkConnectionsPlugin.class.getName();
 }
