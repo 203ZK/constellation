@@ -14,6 +14,7 @@ import au.gov.asd.tac.constellation.plugins.gui.PluginParametersDialog;
 import au.gov.asd.tac.constellation.plugins.gui.PluginParametersSwingDialog;
 import au.gov.asd.tac.constellation.plugins.parameters.PluginParameter;
 import au.gov.asd.tac.constellation.plugins.parameters.PluginParameters;
+import au.gov.asd.tac.constellation.plugins.parameters.types.SingleChoiceParameterType;
 import au.gov.asd.tac.constellation.plugins.parameters.types.StringParameterType;
 import au.gov.asd.tac.constellation.plugins.parameters.types.StringParameterValue;
 import au.gov.asd.tac.constellation.views.dataaccess.plugins.DataAccessPlugin;
@@ -63,10 +64,17 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         StringParameterType.setLines(userIdParameter, 1);
         parameters.addParameter(userIdParameter);
         
-        final PluginParameter<StringParameterValue> reportIdParameter = StringParameterType.build(REPORT_ID_PARAMETER_ID);
+        final PluginParameter<StringParameterValue> apiKeyParameter = StringParameterType.build(API_KEY_PARAMETER_ID);
+        apiKeyParameter.setName(API_KEY_PARAMETER_LABEL);
+        apiKeyParameter.setDescription(API_KEY_PARAMETER_DESCRIPTION);
+        apiKeyParameter.setStringValue(null);
+        apiKeyParameter.setVisible(false);
+        parameters.addParameter(apiKeyParameter);
+        
+        final PluginParameter reportIdParameter = SingleChoiceParameterType.build(REPORT_ID_PARAMETER_ID);
         reportIdParameter.setName(REPORT_ID_PARAMETER_LABEL);
         reportIdParameter.setDescription(REPORT_ID_PARAMETER_DESCRIPTION);
-        StringParameterType.setLines(reportIdParameter, 1);
+        reportIdParameter.setVisible(false);
         parameters.addParameter(reportIdParameter);
         
         return parameters;
@@ -74,33 +82,71 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
     
     @Override
     protected RecordStore query(RecordStore query, PluginInteraction interaction, PluginParameters parameters) throws InterruptedException, PluginException {
+        handleAuth(parameters);
+        return handleReports(interaction, parameters);
+    }
+    
+    private void handleAuth(PluginParameters parameters) throws InterruptedException, PluginException {
         final PluginParameters dlgParams = new PluginParameters();
-        final PluginParameter<StringParameterValue> apiKeyParameter = StringParameterType.build(API_KEY_PARAMETER_ID);
-        apiKeyParameter.setName(API_KEY_PARAMETER_LABEL);
-        apiKeyParameter.setDescription(API_KEY_PARAMETER_DESCRIPTION);
-        dlgParams.addParameter(apiKeyParameter);
+        final PluginParameter<StringParameterValue> apiKeyParam = 
+                (PluginParameter<StringParameterValue>) parameters.getParameters().get(API_KEY_PARAMETER_ID);
+        apiKeyParam.setVisible(true);
+        dlgParams.addParameter(apiKeyParam);
         
         final PluginParametersSwingDialog dialog = new PluginParametersSwingDialog("Input API Key", dlgParams);
+        dialog.showAndWait();
+        final boolean isOk = PluginParametersDialog.OK.equals(dialog.getResult());
+        
+        if (isOk) {
+            apiKeyParam.setVisible(false);
+            final String apiKey = dlgParams.getStringValue(API_KEY_PARAMETER_ID);
+            final String userId = parameters.getStringValue(USER_ID_PARAMETER_ID);
+            
+            List<String> reportIds = new ArrayList<>();
+        
+            try {
+                reportIds = ReportUtilities.getReportIds(userId, apiKey);
+            } catch (AuthenticationException e) {
+                apiKeyParam.setStringValue(null);
+                throw new PluginException(PluginNotificationLevel.ERROR, e.getExplanation());
+            } catch (ParseException | IOException e) {
+                throw new PluginException(PluginNotificationLevel.WARNING, e.getMessage());
+            }
+            
+            if (!reportIds.isEmpty()) {
+                final PluginParameter<SingleChoiceParameterType.SingleChoiceParameterValue> reportIdParam = 
+                    (PluginParameter<SingleChoiceParameterType.SingleChoiceParameterValue>) parameters.getParameters().get(REPORT_ID_PARAMETER_ID);
+                
+                SingleChoiceParameterType.setOptions(reportIdParam, reportIds);
+            }
+        }
+    }
+    
+    private RecordStore handleReports(PluginInteraction interaction, PluginParameters parameters) throws InterruptedException, PluginException {
+        final PluginParameters dlgParams = new PluginParameters();
+        final PluginParameter<SingleChoiceParameterType.SingleChoiceParameterValue> reportIdParam = 
+                    (PluginParameter<SingleChoiceParameterType.SingleChoiceParameterValue>) parameters.getParameters().get(REPORT_ID_PARAMETER_ID);
+        reportIdParam.setVisible(true);
+        dlgParams.addParameter(reportIdParam);
+        
+        final PluginParametersSwingDialog dialog = new PluginParametersSwingDialog("Select report(s)", dlgParams);
         dialog.showAndWait();
         final boolean isOk = PluginParametersDialog.OK.equals(dialog.getResult());
         
         final RecordStore result = new GraphRecordStore();
         
         if (isOk) {
-            final String apiKey = dlgParams.getStringValue(API_KEY_PARAMETER_ID);
+            final String reportId = dlgParams.getStringValue(REPORT_ID_PARAMETER_ID);
             final String userId = parameters.getStringValue(USER_ID_PARAMETER_ID);
-            final String reportId = parameters.getStringValue(REPORT_ID_PARAMETER_ID);
             
             List<Report> reports = new ArrayList<>();
         
             try {
-                reports = ReportUtilities.getReports(userId, apiKey, reportId);
-            } catch (AuthenticationException e) {
-                throw new PluginException(PluginNotificationLevel.ERROR, e.getExplanation());
+                reports = ReportUtilities.getReports(userId, reportId);
             } catch (ParseException | IOException e) {
                 throw new PluginException(PluginNotificationLevel.WARNING, e.getMessage());
             }
-        
+            
             int currentStep = 0;
             final int numReports = reports.size();
             

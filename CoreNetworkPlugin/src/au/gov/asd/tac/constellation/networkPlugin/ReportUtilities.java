@@ -41,6 +41,7 @@ import org.json.simple.parser.ParseException;
 public class ReportUtilities {
     
     private static final String BASE_URL = "http://localhost:8080";
+    private static final String PATH_FETCH_REPORT_IDS = "/reportIds";
     private static final String PATH_FETCH_REPORTS = "/reports";
     
     // These fields have to be aligned with the server
@@ -52,14 +53,55 @@ public class ReportUtilities {
     private static final String TRANSACTION_ATTRIBUTES = "transaction.attributes";
     
     
-    public static List<Report> getReports(
-            final String userId, final String apiKey, final String reportId
+    public static List<String> getReportIds(
+            final String userId, final String apiKey
     ) throws AuthenticationException, ParseException, IOException, InterruptedException {
-        String response = fetchReports(userId, apiKey, reportId);
+        String response = fetchReportIds(userId, apiKey);
+        return parseReportIds(response);
+    }
+    
+    private static List<String> parseReportIds(final String reportIdsString) throws ParseException {
+        JSONParser parser = new JSONParser();
+        JSONArray reportIds = (JSONArray) parser.parse(reportIdsString);
+        
+        List<String> parsedReportIds = new ArrayList<>();
+        
+        for (int i = 0; i < reportIds.size(); i++) {
+            String reportId = (String) reportIds.get(i);
+            parsedReportIds.add(reportId);
+        }
+        
+        return parsedReportIds;
+    }
+    
+    private static String fetchReportIds(final String userId, final String apiKey) throws AuthenticationException, IOException, InterruptedException {
+        HttpClient client = HttpClient.newHttpClient();
+        
+        Map<String, String> bodyMap = new HashMap();
+        bodyMap.put("userId", userId);
+        String requestBody = JsonUtilities.getMapAsString(bodyMap);
+        
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + PATH_FETCH_REPORT_IDS))
+                .header("Content-Type", "application/json")
+                .header("X-API-KEY", apiKey)
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() == HttpURLConnection.HTTP_FORBIDDEN) {
+            throw new AuthenticationException("Wrong API key!");
+        }
+        
+        return response.body();
+    }
+    
+    public static List<Report> getReports(final String userId, final String reportId) throws ParseException, IOException, InterruptedException {
+        String response = fetchReports(userId, reportId);
         return parseReports(response);
     }
     
-    private static String fetchReports(final String userId, final String apiKey, final String reportId) throws AuthenticationException, IOException, InterruptedException {
+    private static String fetchReports(final String userId, final String reportId) throws IOException, InterruptedException {
         HttpClient client = HttpClient.newHttpClient();
         
         Map<String, String> bodyMap = new HashMap();
@@ -70,14 +112,10 @@ public class ReportUtilities {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(BASE_URL + PATH_FETCH_REPORTS))
                 .header("Content-Type", "application/json")
-                .header("X-API-KEY", apiKey)
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() == HttpURLConnection.HTTP_FORBIDDEN) {
-            throw new AuthenticationException("Wrong API key!");
-        }
         
         return response.body();
     }
