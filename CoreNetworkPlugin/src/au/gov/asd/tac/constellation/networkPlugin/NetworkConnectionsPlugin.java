@@ -4,16 +4,27 @@
  */
 package au.gov.asd.tac.constellation.networkPlugin;
 
+import au.gov.asd.tac.constellation.graph.Attribute;
 import au.gov.asd.tac.constellation.graph.Graph;
+import au.gov.asd.tac.constellation.graph.GraphAttribute;
+import au.gov.asd.tac.constellation.graph.GraphElementType;
+import au.gov.asd.tac.constellation.graph.GraphReadMethods;
 import au.gov.asd.tac.constellation.graph.GraphWriteMethods;
 import au.gov.asd.tac.constellation.graph.ReadableGraph;
+import au.gov.asd.tac.constellation.graph.WritableGraph;
+import au.gov.asd.tac.constellation.graph.interaction.InteractiveGraphPluginRegistry;
+import au.gov.asd.tac.constellation.graph.locking.DualGraph;
 import au.gov.asd.tac.constellation.graph.processing.GraphRecordStore;
 import au.gov.asd.tac.constellation.graph.processing.GraphRecordStoreUtilities;
 import au.gov.asd.tac.constellation.graph.processing.RecordStore;
+import au.gov.asd.tac.constellation.graph.schema.Schema;
+import au.gov.asd.tac.constellation.graph.schema.SchemaFactoryUtilities;
 import au.gov.asd.tac.constellation.graph.schema.analytic.concept.AnalyticConcept;
 import au.gov.asd.tac.constellation.graph.schema.visual.concept.VisualConcept;
 import au.gov.asd.tac.constellation.plugins.Plugin;
 import au.gov.asd.tac.constellation.plugins.PluginException;
+import au.gov.asd.tac.constellation.plugins.PluginExecution;
+import au.gov.asd.tac.constellation.plugins.PluginExecutor;
 import au.gov.asd.tac.constellation.plugins.PluginInfo;
 import au.gov.asd.tac.constellation.plugins.PluginInteraction;
 import au.gov.asd.tac.constellation.plugins.PluginType;
@@ -21,9 +32,12 @@ import au.gov.asd.tac.constellation.plugins.parameters.PluginParameter;
 import au.gov.asd.tac.constellation.plugins.parameters.PluginParameters;
 import au.gov.asd.tac.constellation.plugins.parameters.types.SingleChoiceParameterType;
 import au.gov.asd.tac.constellation.plugins.templates.SimpleEditPlugin;
+import au.gov.asd.tac.constellation.views.namedselection.state.NamedSelectionState;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import org.apache.commons.lang3.StringUtils;
 import org.openide.util.NbBundle;
 import org.openide.util.lookup.ServiceProvider;
 
@@ -54,6 +68,7 @@ public class NetworkConnectionsPlugin extends SimpleEditPlugin {
         
         try {
             final int nodeParameterId = VisualConcept.VertexAttribute.IDENTIFIER.get(readableGraph);
+            
             for (int vertexPosition = 0; vertexPosition < readableGraph.getVertexCount(); vertexPosition++) {
                 final int vertexId = readableGraph.getVertex(vertexPosition);
                 final String identifier = readableGraph.getStringValue(nodeParameterId, vertexId);
@@ -70,50 +85,68 @@ public class NetworkConnectionsPlugin extends SimpleEditPlugin {
     
     @Override
     protected void edit(final GraphWriteMethods graph, final PluginInteraction interaction, final PluginParameters parameters) throws InterruptedException, PluginException {
-        final String nodeName = parameters.getStringValue(NODE_PARAMETER_ID);
+        final String nodeIdentifier = parameters.getStringValue(NODE_PARAMETER_ID);
+        
+        final Set<Integer> vertexElements = new HashSet<>();
+        final Set<Integer> transactionElements = new HashSet<>();
+        
+        selectElements(graph, vertexElements, transactionElements, nodeIdentifier);
+        copyElements(graph, vertexElements, transactionElements);
+        
+        PluginExecution.withPlugin(InteractiveGraphPluginRegistry.COPY_TO_NEW_GRAPH).executeNow(graph);
+        clearElements(graph, vertexElements, transactionElements);
+    }
+    
+    private void selectElements(final GraphWriteMethods graph, final Set<Integer> vertexElements, final Set<Integer> transactionElements, final String nodeIdentifier) {
         final int vertexIdentifierId = VisualConcept.VertexAttribute.IDENTIFIER.get(graph);
-        final int vertexTypeId = AnalyticConcept.VertexAttribute.TYPE.get(graph);
-        final int transactionIdentifierId = VisualConcept.TransactionAttribute.IDENTIFIER.get(graph);
-        final int transactionTypeId = AnalyticConcept.TransactionAttribute.TYPE.get(graph);
-                
-        final RecordStore record = new GraphRecordStore();
         
         for (int vertexPosition = 0; vertexPosition < graph.getVertexCount(); vertexPosition++) {
             final int vertexId = graph.getVertex(vertexPosition);
             final String vertexIdentifier = graph.getStringValue(vertexIdentifierId, vertexId);
-            final String vertexType = graph.getStringValue(vertexTypeId, vertexId);
             
-            if (!nodeName.equals(vertexIdentifier)) { continue; }
+            if (!nodeIdentifier.equals(vertexIdentifier)) { continue; }
             
             final int neighbourCount = graph.getVertexNeighbourCount(vertexId);
             for (int neighbourPosition = 0; neighbourPosition < neighbourCount; neighbourPosition++) {
                 final int neighbourId = graph.getVertexNeighbour(vertexId, neighbourPosition);
-                final String neighbourIdentifier = graph.getStringValue(vertexIdentifierId, neighbourId);
-                final String neighbourType = graph.getStringValue(vertexTypeId, neighbourId);
-                
                 final int neighbourLink = graph.getLink(vertexId, neighbourId);
                 final int transactionCount = graph.getLinkTransactionCount(neighbourLink);
                 
                 for (int transactionPosition = 0; transactionPosition < transactionCount; transactionPosition++) {
                     final int transactionId = graph.getLinkTransaction(neighbourLink, transactionPosition);
-                    final String transactionIdentifier = graph.getStringValue(transactionIdentifierId, transactionId);
-                    final String transactionType = graph.getStringValue(transactionTypeId, transactionId);
                     
-                    record.add();
-                    
-                    record.set(GraphRecordStoreUtilities.SOURCE + VisualConcept.VertexAttribute.IDENTIFIER, vertexIdentifier);
-                    record.set(GraphRecordStoreUtilities.SOURCE + AnalyticConcept.VertexAttribute.TYPE, vertexType);
-                
-                    record.set(GraphRecordStoreUtilities.DESTINATION + VisualConcept.VertexAttribute.IDENTIFIER, neighbourIdentifier);
-                    record.set(GraphRecordStoreUtilities.DESTINATION + AnalyticConcept.VertexAttribute.TYPE, neighbourType);
-                    
-                    record.set(GraphRecordStoreUtilities.TRANSACTION + VisualConcept.TransactionAttribute.IDENTIFIER, transactionIdentifier);
-                    record.set(GraphRecordStoreUtilities.TRANSACTION + AnalyticConcept.TransactionAttribute.TYPE, transactionType);
+                    vertexElements.add(vertexId);
+                    vertexElements.add(neighbourId);
+                    transactionElements.add(transactionId);
                 }
             }
         }
-            
-        GraphRecordStoreUtilities.addRecordStoreToGraph(graph, record, false, true, null);
+    }
+    
+    private void copyElements(final GraphWriteMethods graph, final Set<Integer> vertexElements, final Set<Integer> transactionElements) {
+        final int vertexSelectedId = VisualConcept.VertexAttribute.SELECTED.get(graph);
+        final int transactionSelectedId = VisualConcept.TransactionAttribute.SELECTED.get(graph);
+        
+        for (int vertexElement : vertexElements) {
+            graph.setBooleanValue(vertexSelectedId, vertexElement, true);
+        }
+        
+        for (int transactionElement : transactionElements) {
+            graph.setBooleanValue(transactionSelectedId, transactionElement, true);
+        }
+    }
+    
+    private void clearElements(final GraphWriteMethods graph, final Set<Integer> vertexElements, final Set<Integer> transactionElements) {
+        final int vertexSelectedId = VisualConcept.VertexAttribute.SELECTED.get(graph);
+        final int transactionSelectedId = VisualConcept.TransactionAttribute.SELECTED.get(graph);
+        
+        for (int vertexElement : vertexElements) {
+            graph.setBooleanValue(vertexSelectedId, vertexElement, false);
+        }
+        
+        for (int transactionElement : transactionElements) {
+            graph.setBooleanValue(transactionSelectedId, transactionElement, false);
+        }
     }
     
 }
