@@ -15,6 +15,7 @@ public class Report {
     
     private final String internalUserId;
     private final String reportId;
+    private final String reportName;
     
     private final String sourceIdentifier;
     private final String sourceEntityType;
@@ -29,7 +30,7 @@ public class Report {
     private final Map<String, Object> transactionAttributes;
     
     public Report(
-            String internalUserId, String reportId,
+            String internalUserId, String reportId, String reportName, 
             String sourceIdentifier, String sourceType, 
             String sourceEntityId, Map<String, Object> sourceOtherAttributes,
             String destinationIdentifier, String destinationType,
@@ -38,6 +39,7 @@ public class Report {
     ) {
         this.internalUserId = internalUserId;
         this.reportId = reportId;
+        this.reportName = reportName;
         this.sourceIdentifier = sourceIdentifier;
         this.sourceEntityType = sourceType;
         this.sourceEntityId = sourceEntityId;
@@ -55,6 +57,10 @@ public class Report {
     
     public String getReportId() {
         return this.reportId;
+    }
+    
+    public String getReportName() {
+        return this.reportName;
     }
     
     public String getSourceIdentifier() {

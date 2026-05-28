@@ -40,41 +40,60 @@ import org.json.simple.parser.ParseException;
  */
 public class ReportUtilities {
     
-    private static final String BASE_URL = "http://localhost:8080";
+    private static final String BASE_URL = "http://172.20.208.127:8080";
     private static final String PATH_FETCH_REPORT_IDS = "/reportIds";
     private static final String PATH_FETCH_REPORTS = "/reports";
     
     // These fields have to be aligned with the server
     private static final String INTERNAL_USER_ID = "internal_user_id";
     private static final String REPORT_ID = "report_id";
+    private static final String REPORT_NAME = "report_name";
     private static final String SOURCE_OTHER_ATTRIBUTES = "source.attributes";
     private static final String DESTINATION_OTHER_ATTRIBUTES = "destination.attributes";
     // Anything that isn't a source/destination attribute is considered a transaction attribute
     private static final String TRANSACTION_ATTRIBUTES = "transaction.attributes";
     
     
-    public static List<String> getReportIds(
-            final String userId, final String apiKey
-    ) throws AuthenticationException, ParseException, IOException, InterruptedException {
-        String response = fetchReportIds(userId, apiKey);
-        return parseReportIds(response);
-    }
-    
-    private static List<String> parseReportIds(final String reportIdsString) throws ParseException {
-        JSONParser parser = new JSONParser();
-        JSONArray reportIds = (JSONArray) parser.parse(reportIdsString);
+    public static class ReportOption {
         
-        List<String> parsedReportIds = new ArrayList<>();
+        private final String id, name;
         
-        for (int i = 0; i < reportIds.size(); i++) {
-            String reportId = (String) reportIds.get(i);
-            parsedReportIds.add(reportId);
+        public ReportOption(String id, String name) { 
+            this.id = id;
+            this.name = name;
         }
         
-        return parsedReportIds;
+        @Override
+        public String toString() {
+            return this.name + " (ID: " + this.id + ")";
+        }
     }
     
-    private static String fetchReportIds(final String userId, final String apiKey) throws AuthenticationException, IOException, InterruptedException {
+    public static Map<String, String> getReportOptions(
+            final String userId, final String apiKey
+    ) throws AuthenticationException, ParseException, IOException, InterruptedException {
+        String response = fetchReportOptions(userId, apiKey);
+        return parseReportOptions(response);
+    }
+    
+    private static Map<String, String> parseReportOptions(final String reportOptionsString) throws ParseException {
+        JSONParser parser = new JSONParser();
+        JSONArray options = (JSONArray) parser.parse(reportOptionsString);
+        
+        Map<String, String> parsedOptions = new HashMap<>();
+        
+        for (int i = 0; i < options.size(); i++) {
+            JSONObject option = (JSONObject) options.get(i);
+            String reportId = (String) option.get(REPORT_ID);
+            String reportName = (String) option.get(REPORT_NAME);
+            ReportOption parsedOption = new ReportOption(reportId, reportName);
+            parsedOptions.put(parsedOption.toString(), reportId);
+        }
+        
+        return parsedOptions;
+    }
+    
+    private static String fetchReportOptions(final String userId, final String apiKey) throws AuthenticationException, IOException, InterruptedException {
         HttpClient client = HttpClient.newHttpClient();
         
         Map<String, String> bodyMap = new HashMap();
@@ -147,6 +166,7 @@ public class ReportUtilities {
     private static Report parseReport(final JSONObject reportJson) {
         String internalUserId = (String) reportJson.get(INTERNAL_USER_ID);
         String reportId = (String) reportJson.get(REPORT_ID);
+        String reportName = (String) reportJson.get(REPORT_NAME);
         
         String sourceIdentifier = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + VisualConcept.VertexAttribute.IDENTIFIER);
         String sourceType = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + AnalyticConcept.VertexAttribute.TYPE);
@@ -166,7 +186,7 @@ public class ReportUtilities {
         Map<String, Object> transactionAttributes = parseAttributes(transactionAttributesJson);
         
         return new Report(
-                internalUserId, reportId, 
+                internalUserId, reportId, reportName,  
                 sourceIdentifier, sourceType, sourceEntityId, sourceOtherAttributes,
                 destinationIdentifier, destinationType, destinationEntityId, destinationOtherAttributes,
                 transactionAttributes

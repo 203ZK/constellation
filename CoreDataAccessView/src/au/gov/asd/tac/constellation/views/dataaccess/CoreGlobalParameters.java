@@ -78,7 +78,7 @@ public class CoreGlobalParameters extends GlobalParameters {
         final List<PositionalPluginParameter> positionalPluginParametersList = new ArrayList<>();
         positionalPluginParametersList.add(QUERY_NAME_PARAMETER_ID_INDEX, new PositionalPluginParameter(queryNameParameter, 0));
         positionalPluginParametersList.add(DATETIME_RANGE_PARAMETER_ID_INDEX, new PositionalPluginParameter(datetimeRangeParameter, 100));
-
+        
         return positionalPluginParametersList;
     }
 
