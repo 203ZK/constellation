@@ -15,6 +15,9 @@ import au.gov.asd.tac.constellation.graph.processing.Record;
 import au.gov.asd.tac.constellation.graph.schema.analytic.concept.AnalyticConcept;
 import au.gov.asd.tac.constellation.graph.schema.attribute.SchemaAttribute;
 import au.gov.asd.tac.constellation.graph.schema.visual.concept.VisualConcept;
+import au.gov.asd.tac.constellation.utilities.color.ConstellationColor;
+import au.gov.asd.tac.constellation.utilities.icon.AnalyticIconProvider;
+import au.gov.asd.tac.constellation.utilities.icon.IconManager;
 import au.gov.asd.tac.constellation.utilities.json.JsonUtilities;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -165,14 +168,14 @@ public class ReportUtilities {
         String reportName = (String) reportJson.get(REPORT_NAME);
         
         String sourceIdentifier = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + VisualConcept.VertexAttribute.IDENTIFIER);
-//        String sourceType = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + AnalyticConcept.VertexAttribute.TYPE);
+        String sourceType = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + AnalyticConcept.VertexAttribute.TYPE);
         String sourceEntityId = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + ReportConcept.VertexAttribute.ENTITY_ID);
-        String sourceEntityType = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + ReportConcept.VertexAttribute.ENTITY_TYPE);
+        // String sourceEntityType = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + ReportConcept.VertexAttribute.ENTITY_TYPE);
         
         String destinationIdentifier = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + VisualConcept.VertexAttribute.IDENTIFIER);
-//        String destinationType = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + AnalyticConcept.VertexAttribute.TYPE);
+        String destinationType = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + AnalyticConcept.VertexAttribute.TYPE);
         String destinationEntityId = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + ReportConcept.VertexAttribute.ENTITY_ID);
-        String destinationEntityType = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + ReportConcept.VertexAttribute.ENTITY_TYPE);
+        // String destinationEntityType = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + ReportConcept.VertexAttribute.ENTITY_TYPE);
         
         Map<String, Object> sourceOtherAttributes = (Map<String, Object>) reportJson.get(SOURCE_OTHER_ATTRIBUTES);
         Map<String, Object> destinationOtherAttributes = (Map<String, Object>) reportJson.get(DESTINATION_OTHER_ATTRIBUTES);
@@ -180,8 +183,8 @@ public class ReportUtilities {
         
         return new Report(
                 internalUserId, reportId, reportName,  
-                sourceIdentifier, sourceEntityType, sourceEntityId, sourceOtherAttributes,
-                destinationIdentifier, destinationEntityType, destinationEntityId, destinationOtherAttributes,
+                sourceIdentifier, sourceType, sourceEntityId, sourceOtherAttributes,
+                destinationIdentifier, destinationType, destinationEntityId, destinationOtherAttributes,
                 transactionAttributes
         );
     }
@@ -196,18 +199,25 @@ public class ReportUtilities {
      */
     public static void addReportToRecord(final Report report, final Record record) {
         record.set(GraphRecordStoreUtilities.SOURCE + VisualConcept.VertexAttribute.IDENTIFIER, report.getSourceIdentifier());
-        record.set(GraphRecordStoreUtilities.SOURCE + AnalyticConcept.VertexAttribute.TYPE, ReportConcept.VertexType.NETWORK_ENTITY);
+        record.set(GraphRecordStoreUtilities.SOURCE + AnalyticConcept.VertexAttribute.TYPE, report.getSourceEntityType());
         record.set(GraphRecordStoreUtilities.SOURCE + ReportConcept.VertexAttribute.ENTITY_ID, report.getSourceEntityId());
-        record.set(GraphRecordStoreUtilities.SOURCE + ReportConcept.VertexAttribute.ENTITY_TYPE, report.getSourceEntityType());
+        record.set(GraphRecordStoreUtilities.SOURCE + VisualConcept.VertexAttribute.COLOR, ConstellationColor.NAVY);
+        record.set(GraphRecordStoreUtilities.SOURCE + VisualConcept.VertexAttribute.FOREGROUND_ICON, AnalyticIconProvider.DESKTOP);
+        record.set(GraphRecordStoreUtilities.SOURCE + VisualConcept.VertexAttribute.BACKGROUND_ICON, IconManager.getIcon("Flat Circle"));
+        record.set(GraphRecordStoreUtilities.SOURCE + VisualConcept.VertexAttribute.SELECTED, true);
         
         record.set(GraphRecordStoreUtilities.DESTINATION + VisualConcept.VertexAttribute.IDENTIFIER, report.getDestinationIdentifier());
-        record.set(GraphRecordStoreUtilities.DESTINATION + AnalyticConcept.VertexAttribute.TYPE, ReportConcept.VertexType.NETWORK_ENTITY);
+        record.set(GraphRecordStoreUtilities.DESTINATION + AnalyticConcept.VertexAttribute.TYPE, report.getDestinationEntityType());
         record.set(GraphRecordStoreUtilities.DESTINATION + ReportConcept.VertexAttribute.ENTITY_ID, report.getDestinationEntityId());
-        record.set(GraphRecordStoreUtilities.DESTINATION + ReportConcept.VertexAttribute.ENTITY_TYPE, report.getDestinationEntityType());
+        record.set(GraphRecordStoreUtilities.DESTINATION + VisualConcept.VertexAttribute.COLOR, ConstellationColor.NAVY);
+        record.set(GraphRecordStoreUtilities.DESTINATION + VisualConcept.VertexAttribute.FOREGROUND_ICON, AnalyticIconProvider.DESKTOP);
+        record.set(GraphRecordStoreUtilities.DESTINATION + VisualConcept.VertexAttribute.BACKGROUND_ICON, IconManager.getIcon("Flat Circle"));
+        record.set(GraphRecordStoreUtilities.DESTINATION + VisualConcept.VertexAttribute.SELECTED, true);
         
         record.set(GraphRecordStoreUtilities.TRANSACTION + VisualConcept.TransactionAttribute.IDENTIFIER, report.getReportId());
         record.set(GraphRecordStoreUtilities.TRANSACTION + AnalyticConcept.TransactionAttribute.TYPE, ReportConcept.TransactionType.COMMUNICATION);
-    
+        record.set(GraphRecordStoreUtilities.TRANSACTION + VisualConcept.TransactionAttribute.SELECTED, true);
+        
         setAttributesInRecord(record, report.getSourceOtherAttributes(), GraphRecordStoreUtilities.SOURCE);
         setAttributesInRecord(record, report.getDestinationOtherAttributes(), GraphRecordStoreUtilities.DESTINATION);
         setAttributesInRecord(record, report.getTransactionAttributes(), GraphRecordStoreUtilities.TRANSACTION);

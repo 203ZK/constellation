@@ -60,13 +60,6 @@ public class ReportSchemaFactory extends AnalyticSchemaFactory {
         public ReportSchema(final SchemaFactory factory) {
             super(factory);
         }
-        
-        @Override
-        public void completeVertex(final GraphWriteMethods graph, final int vertex) {
-            final int typeAttributeId = AnalyticConcept.VertexAttribute.TYPE.get(graph);
-            graph.setStringValue(typeAttributeId, vertex, "Network Entity");
-            super.completeVertex(graph, vertex);
-        }
     }
     
 }
