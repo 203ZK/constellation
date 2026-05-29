@@ -15,6 +15,7 @@ import au.gov.asd.tac.constellation.plugins.gui.PluginParametersDialog;
 import au.gov.asd.tac.constellation.plugins.gui.PluginParametersSwingDialog;
 import au.gov.asd.tac.constellation.plugins.parameters.PluginParameter;
 import au.gov.asd.tac.constellation.plugins.parameters.PluginParameters;
+import au.gov.asd.tac.constellation.plugins.parameters.types.MultiChoiceParameterType;
 import au.gov.asd.tac.constellation.plugins.parameters.types.SingleChoiceParameterType;
 import au.gov.asd.tac.constellation.plugins.parameters.types.StringParameterType;
 import au.gov.asd.tac.constellation.plugins.parameters.types.StringParameterValue;
@@ -22,11 +23,13 @@ import au.gov.asd.tac.constellation.views.dataaccess.CoreGlobalParameters;
 import au.gov.asd.tac.constellation.views.dataaccess.plugins.DataAccessPlugin;
 import au.gov.asd.tac.constellation.views.dataaccess.plugins.DataAccessPluginCoreType;
 import au.gov.asd.tac.constellation.views.dataaccess.templates.RecordStoreQueryPlugin;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.naming.AuthenticationException;
 import org.json.simple.parser.ParseException;
@@ -59,9 +62,10 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
     private static final String REPORT_ID_PARAMETER_LABEL = "Report ID";
     private static final String REPORT_ID_PARAMETER_DESCRIPTION = "Select the report ID to be visualised";
     
-    // Store the most recently authenticated user ID and the corresponding report IDs that were fetched
-    private static String prevUserId = "";
-    private static Map<String, String> reportOptions = new HashMap<>();
+    private static final AuthenticationState authState = new AuthenticationState();
+    
+    private static final String ERROR_REACHING_SERVER = "Error reaching the server.";
+    private static final String ERROR_AUTHENTICATION = "Authentication failed.";
     
     
     @Override
@@ -78,11 +82,11 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         final PluginParameter<StringParameterValue> apiKeyParameter = StringParameterType.build(API_KEY_PARAMETER_ID);
         apiKeyParameter.setName(API_KEY_PARAMETER_LABEL);
         apiKeyParameter.setDescription(API_KEY_PARAMETER_DESCRIPTION);
-        userIdParameter.setStringValue("");
+        apiKeyParameter.setStringValue("");
         apiKeyParameter.setVisible(false);
         parameters.addParameter(apiKeyParameter);
         
-        final PluginParameter reportIdParameter = SingleChoiceParameterType.build(REPORT_ID_PARAMETER_ID);
+        final PluginParameter reportIdParameter = MultiChoiceParameterType.build(REPORT_ID_PARAMETER_ID);
         reportIdParameter.setName(REPORT_ID_PARAMETER_LABEL);
         reportIdParameter.setDescription(REPORT_ID_PARAMETER_DESCRIPTION);
         reportIdParameter.setVisible(false);
@@ -94,23 +98,28 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
     @Override
     protected RecordStore query(RecordStore query, PluginInteraction interaction, PluginParameters parameters) throws InterruptedException, PluginException {
         final String userId = parameters.getStringValue(USER_ID_PARAMETER_ID).trim();
-        final RecordStore result = new GraphRecordStore();
         
         if (userId.isBlank()) {
             throw new PluginException(PluginNotificationLevel.ERROR, "User ID cannot be blank.");
-        } else if (!userId.equals(prevUserId)) {
-            launchAuthDialog(result, interaction, parameters);
-        } else {
-            launchReportsDialog(result, interaction, parameters);
         }
+        
+        if (!authState.isAuthenticated(userId)) {
+            if (!launchAuthDialog(parameters)) {
+                return null;
+            } 
+        }
+
+        final RecordStore result = new GraphRecordStore();
+        launchReportsDialog(userId, result, interaction, parameters);
         
         return result;
     }
     
-    private void launchAuthDialog(RecordStore result, PluginInteraction interaction, PluginParameters parameters) throws InterruptedException, PluginException {
+    private boolean launchAuthDialog(PluginParameters parameters) throws InterruptedException, PluginException {
         final PluginParameters dlgParams = new PluginParameters();
         final PluginParameter<StringParameterValue> apiKeyParameter = 
                 (PluginParameter<StringParameterValue>) parameters.getParameters().get(API_KEY_PARAMETER_ID);
+        
         apiKeyParameter.setVisible(true);
         dlgParams.addParameter(apiKeyParameter);
         
@@ -118,36 +127,36 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         dialog.showAndWait();
         final boolean isOk = PluginParametersDialog.OK.equals(dialog.getResult());
         
+        boolean continueImporting = false;
+        
         if (isOk) {
             final String userId = parameters.getStringValue(USER_ID_PARAMETER_ID).trim();
             final String apiKey = dlgParams.getStringValue(API_KEY_PARAMETER_ID).trim();
+            processAuth(userId, apiKey);
+            continueImporting = true;
+        }
         
-            try {
-                reportOptions = ReportUtilities.getReportOptions(userId, apiKey);
-                prevUserId = userId;
-                launchReportsDialog(result, interaction, parameters);
-                
-            } catch (AuthenticationException e) {
-                // If authentication error, reset report ID list
-                reportOptions = new HashMap<>();
-                prevUserId = "";
-                throw new PluginException(PluginNotificationLevel.ERROR, e.getExplanation());
-                
-            } catch (ParseException | IOException e) {
-                throw new PluginException(PluginNotificationLevel.WARNING, e.getMessage());
-            }
+        return continueImporting;
+    }
+    
+    private void processAuth(final String userId, final String apiKey) throws InterruptedException, PluginException {
+        try {
+            Map<String, String> reportOptions = ReportUtilities.getReportOptions(userId, apiKey);
+            authState.setState(userId, reportOptions);
+        } catch (IOException e) {
+            throw new PluginException(PluginNotificationLevel.ERROR, ERROR_REACHING_SERVER);
+        } catch (AuthenticationException e) {
+            authState.clearState();
+            throw new PluginException(PluginNotificationLevel.ERROR, ERROR_AUTHENTICATION);
         }
     }
     
-    private RecordStore launchReportsDialog(RecordStore result, PluginInteraction interaction, PluginParameters parameters) throws InterruptedException, PluginException {
+    private void launchReportsDialog(String userId, RecordStore result, PluginInteraction interaction, PluginParameters parameters) throws InterruptedException, PluginException {
         final PluginParameters dlgParams = new PluginParameters();
-        final PluginParameter<SingleChoiceParameterType.SingleChoiceParameterValue> reportIdParam = 
-                    (PluginParameter<SingleChoiceParameterType.SingleChoiceParameterValue>) parameters.getParameters().get(REPORT_ID_PARAMETER_ID);
-        
-        List<String> optionStrings = reportOptions.keySet()
-                .stream()
-                .collect(Collectors.toList());
-        SingleChoiceParameterType.setOptions(reportIdParam, optionStrings);
+        final PluginParameter<MultiChoiceParameterType.MultiChoiceParameterValue> reportIdParam = 
+                    (PluginParameter<MultiChoiceParameterType.MultiChoiceParameterValue>) parameters.getParameters().get(REPORT_ID_PARAMETER_ID);
+
+        MultiChoiceParameterType.setOptions(reportIdParam, authState.getOptions());
         
         reportIdParam.setVisible(true);
         dlgParams.addParameter(reportIdParam);
@@ -157,34 +166,35 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         final boolean isOk = PluginParametersDialog.OK.equals(dialog.getResult());
         
         if (isOk) {
-            final String reportOption = dlgParams.getStringValue(REPORT_ID_PARAMETER_ID);
-            final String trimmedOption = reportOption == null ? "" : reportOption.trim();
-            final String reportId = reportOptions.getOrDefault(trimmedOption, "");
+            List<String> selectedReportIds = MultiChoiceParameterType.getChoices(reportIdParam)
+                    .stream()
+                    .map(choice -> choice.trim())
+                    .map(authState::getReportId)
+                    .filter(Objects::nonNull)
+                    .toList();
             
-            final String userId = parameters.getStringValue(USER_ID_PARAMETER_ID).trim();
-            
-            List<Report> reports = new ArrayList<>();
-        
-            try {
-                reports = ReportUtilities.getReports(userId, reportId);
-            } catch (ParseException | IOException e) {
-                throw new PluginException(PluginNotificationLevel.WARNING, e.getMessage());
-            }
-            
-            int currentStep = 0;
-            final int numReports = reports.size();
-            
-            for (Report report : reports) {
-                result.add();
-                ReportUtilities.addReportToRecord(report, result);
-                interaction.setProgress(
-                        currentStep++, numReports, 
-                        "Processing report " + (currentStep + 1) + "/" + numReports, 
-                        true);
-            }
+            processReports(userId, selectedReportIds, result, interaction);
         }
+    }
+    
+    private void processReports(String userId, List<String> reportIds, RecordStore result, PluginInteraction interaction) throws InterruptedException, PluginException {        
+        final List<Report> reports;
         
-        return result;
+        try {
+            reports = ReportUtilities.getReports(userId, reportIds);
+        } catch (IOException e) {
+            throw new PluginException(PluginNotificationLevel.ERROR, ERROR_REACHING_SERVER);
+        }
+
+        int currentStep = 0;
+        final int numReports = reports.size();
+
+        for (Report report : reports) {
+            result.add();
+            ReportUtilities.addReportToRecord(report, result);
+            final String progressString = "Processing report " + (currentStep + 1) + "/" + numReports;
+            interaction.setProgress(currentStep++, numReports, progressString, true);
+        }
     }
 
     @Override

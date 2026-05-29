@@ -15,14 +15,17 @@ import au.gov.asd.tac.constellation.graph.processing.Record;
 import au.gov.asd.tac.constellation.graph.schema.analytic.concept.AnalyticConcept;
 import au.gov.asd.tac.constellation.graph.schema.attribute.SchemaAttribute;
 import au.gov.asd.tac.constellation.graph.schema.visual.concept.VisualConcept;
-import au.gov.asd.tac.constellation.plugins.PluginException;
 import au.gov.asd.tac.constellation.utilities.json.JsonUtilities;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -30,9 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.naming.AuthenticationException;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
+import org.json.JSONArray;
 import org.json.simple.parser.ParseException;
 
 /**
@@ -53,9 +54,13 @@ public class ReportUtilities {
     // Anything that isn't a source/destination attribute is considered a transaction attribute
     private static final String TRANSACTION_ATTRIBUTES = "transaction.attributes";
     
+    private static final ObjectMapper mapper = new ObjectMapper();
+    private static final HttpClient client = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
+    
     
     public static class ReportOption {
-        
         private final String id, name;
         
         public ReportOption(String id, String name) { 
@@ -63,45 +68,41 @@ public class ReportUtilities {
             this.name = name;
         }
         
-        @Override
-        public String toString() {
+        public String getDisplayName() {
             return this.name + " (ID: " + this.id + ")";
         }
     }
     
-    public static Map<String, String> getReportOptions(
-            final String userId, final String apiKey
-    ) throws AuthenticationException, ParseException, IOException, InterruptedException {
+    public static Map<String, String> getReportOptions(final String userId, final String apiKey) throws AuthenticationException, IOException, InterruptedException {
         String response = fetchReportOptions(userId, apiKey);
         return parseReportOptions(response);
     }
     
-    private static Map<String, String> parseReportOptions(final String reportOptionsString) throws ParseException {
-        JSONParser parser = new JSONParser();
-        JSONArray options = (JSONArray) parser.parse(reportOptionsString);
+    private static Map<String, String> parseReportOptions(final String reportOptionsString) throws JsonProcessingException {
+        List<Map<String, Object>> options = mapper.readValue(reportOptionsString, new TypeReference<List<Map<String, Object>>>(){});
         
         Map<String, String> parsedOptions = new HashMap<>();
         
-        for (int i = 0; i < options.size(); i++) {
-            JSONObject option = (JSONObject) options.get(i);
+        for (Map<String, Object> option : options) {
             String reportId = (String) option.get(REPORT_ID);
             String reportName = (String) option.get(REPORT_NAME);
-            ReportOption parsedOption = new ReportOption(reportId, reportName);
-            parsedOptions.put(parsedOption.toString(), reportId);
+            parsedOptions.put(
+                    new ReportOption(reportId, reportName).getDisplayName(), 
+                    reportId
+            );
         }
         
         return parsedOptions;
     }
     
     private static String fetchReportOptions(final String userId, final String apiKey) throws AuthenticationException, IOException, InterruptedException {
-        HttpClient client = HttpClient.newHttpClient();
-        
-        Map<String, String> bodyMap = new HashMap();
+        Map<String, String> bodyMap = new HashMap<>();
         bodyMap.put("userId", userId);
         String requestBody = JsonUtilities.getMapAsString(bodyMap);
         
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(BASE_URL + PATH_FETCH_REPORT_IDS))
+                .timeout(Duration.ofSeconds(5))
                 .header("Content-Type", "application/json")
                 .header("X-API-KEY", apiKey)
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
@@ -115,21 +116,20 @@ public class ReportUtilities {
         return response.body();
     }
     
-    public static List<Report> getReports(final String userId, final String reportId) throws ParseException, IOException, InterruptedException {
-        String response = fetchReports(userId, reportId);
+    public static List<Report> getReports(final String userId, final List<String> reportIds) throws IOException, InterruptedException {
+        String response = fetchReports(userId, reportIds);
         return parseReports(response);
     }
     
-    private static String fetchReports(final String userId, final String reportId) throws IOException, InterruptedException {
-        HttpClient client = HttpClient.newHttpClient();
-        
-        Map<String, String> bodyMap = new HashMap();
+    private static String fetchReports(final String userId, final List<String> reportIds) throws IOException, InterruptedException {
+        Map<String, Object> bodyMap = new HashMap<>();
         bodyMap.put("userId", userId);
-        bodyMap.put("reportId", reportId);
+        bodyMap.put("reportIds", new JSONArray(reportIds));
         String requestBody = JsonUtilities.getMapAsString(bodyMap);
         
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(BASE_URL + PATH_FETCH_REPORTS))
+                .timeout(Duration.ofSeconds(5))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build();
@@ -139,18 +139,14 @@ public class ReportUtilities {
         return response.body();
     }
     
-    private static List<Report> parseReports(final String reportsString) throws ParseException {
-        JSONParser parser = new JSONParser();
-        JSONArray jsonReports = (JSONArray) parser.parse(reportsString);
+    private static List<Report> parseReports(final String reportsString) throws JsonProcessingException {
+        List<Map<String, Object>> reports = mapper.readValue(reportsString, new TypeReference<List<Map<String, Object>>>(){});
         
         List<Report> parsedReports = new ArrayList<>();
         
-        for (int i = 0; i < jsonReports.size(); i++) {
-            JSONObject report = (JSONObject) jsonReports.get(i);
+        for (Map<String, Object> report : reports) {
             Report parsedReport = parseReport(report);
-            if (parsedReport != null) {
-                parsedReports.add(parsedReport);
-            }
+            parsedReports.add(parsedReport);
         }
         
         return parsedReports;
@@ -160,10 +156,10 @@ public class ReportUtilities {
      * Each Report must have the following fields.
      * - Metadata fields: internal_user_id, report_id, 
      * - Source/destination identifier, (entity) type, entity ID,
-     * - Source/destination additional attributes
+     * - Source/destination additional attributes,
      * - Transaction attributes
      */
-    private static Report parseReport(final JSONObject reportJson) {
+    private static Report parseReport(final Map<String, Object> reportJson) {
         String internalUserId = (String) reportJson.get(INTERNAL_USER_ID);
         String reportId = (String) reportJson.get(REPORT_ID);
         String reportName = (String) reportJson.get(REPORT_NAME);
@@ -172,18 +168,13 @@ public class ReportUtilities {
         String sourceType = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + AnalyticConcept.VertexAttribute.TYPE);
         String sourceEntityId = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + ReportConcept.VertexAttribute.ENTITY_ID);
         
-        JSONObject sourceOtherAttributesJson = (JSONObject) reportJson.get(SOURCE_OTHER_ATTRIBUTES);
-        Map<String, Object> sourceOtherAttributes = parseAttributes(sourceOtherAttributesJson);
-        
         String destinationIdentifier = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + VisualConcept.VertexAttribute.IDENTIFIER);
         String destinationType = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + AnalyticConcept.VertexAttribute.TYPE);
         String destinationEntityId = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + ReportConcept.VertexAttribute.ENTITY_ID);
         
-        JSONObject destinationOtherAttributesJson = (JSONObject) reportJson.get(DESTINATION_OTHER_ATTRIBUTES);
-        Map<String, Object> destinationOtherAttributes = parseAttributes(destinationOtherAttributesJson);
-        
-        JSONObject transactionAttributesJson = (JSONObject) reportJson.get(TRANSACTION_ATTRIBUTES);
-        Map<String, Object> transactionAttributes = parseAttributes(transactionAttributesJson);
+        Map<String, Object> sourceOtherAttributes = (Map<String, Object>) reportJson.get(SOURCE_OTHER_ATTRIBUTES);
+        Map<String, Object> destinationOtherAttributes = (Map<String, Object>) reportJson.get(DESTINATION_OTHER_ATTRIBUTES);
+        Map<String, Object> transactionAttributes = (Map<String, Object>) reportJson.get(TRANSACTION_ATTRIBUTES);
         
         return new Report(
                 internalUserId, reportId, reportName,  
@@ -193,17 +184,17 @@ public class ReportUtilities {
         );
     }
     
-    /**
-     * Parses a JSON map as a map of attributes.
-    */
-    private static Map<String, Object> parseAttributes(final JSONObject attributesJson) {
-        Map<String, Object> attributes = new HashMap<>();
-        for (Object key : attributesJson.keySet()) {
-            Object value = attributesJson.get(key);
-            attributes.put((String) key, value);
-        }
-        return attributes;
-    }
+//    /**
+//     * Parses a JSON map as a map of attributes.
+//    */
+//    private static Map<String, Object> parseAttributes(final JSONObject attributesJson) {
+//        Map<String, Object> attributes = new HashMap<>();
+//        for (String key : attributesJson.keySet()) {
+//            Object value = attributesJson.get(key);
+//            attributes.put((String) key, value);
+//        }
+//        return attributes;
+//    }
     
     /**
      * Adds the attributes of a Report instance to the current row of a
