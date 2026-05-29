@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.Map;
 import javax.naming.AuthenticationException;
 import org.json.JSONArray;
-import org.json.simple.parser.ParseException;
 
 /**
  * Report Utilities.
