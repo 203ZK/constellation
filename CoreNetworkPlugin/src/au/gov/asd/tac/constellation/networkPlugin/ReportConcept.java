@@ -49,27 +49,25 @@ public class ReportConcept extends SchemaConcept {
                         .setDescription("The readable identifier of the entity (e.g., user_ABC123)")
                         .create()
                         .build();
+        
+        public static final SchemaAttribute ENTITY_TYPE = 
+                new SchemaAttribute.Builder(GraphElementType.VERTEX, StringAttributeDescription.ATTRIBUTE_NAME, "EntityType")
+                        .setDescription("The type of network entity")
+                        .create()
+                        .build();
     }
     
     @Override
     public Collection<SchemaAttribute> getSchemaAttributes() {
         final List<SchemaAttribute> schemaAttributes = new ArrayList<>();
         schemaAttributes.add(VertexAttribute.ENTITY_ID);
+        schemaAttributes.add(VertexAttribute.ENTITY_TYPE);
         return Collections.unmodifiableCollection(schemaAttributes);
     }
     
-//    public static void addAttribute(SchemaAttribute attribute) {
-//        schemaAttributes.add(attribute);
-//    }
-//    
-//    public static void resetSchemaAttributes() {
-//        schemaAttributes = new ArrayList<>();
-//        schemaAttributes.add(VertexAttribute.ENTITY_ID);
-//    }
-    
     public static class VertexType {
         public static final SchemaVertexType NETWORK_ENTITY = new SchemaVertexType.Builder("Network Entity")
-                .setDescription("A node representing an entity on a network, e.g., a user, a server.")
+                .setDescription("A node representing an entity on a network (e.g., a user or a server).")
                 .setColor(ConstellationColor.NAVY)
                 .setForegroundIcon(AnalyticIconProvider.DESKTOP)
                 .setBackgroundIcon(IconManager.getIcon("Flat Circle"))

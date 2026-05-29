@@ -40,7 +40,8 @@ import org.json.JSONArray;
  */
 public class ReportUtilities {
     
-    private static final String BASE_URL = "http://172.20.208.127:8080";
+//    private static final String BASE_URL = "http://172.20.208.127:8080";
+    private static final String BASE_URL = "http://localhost:8080";
     private static final String PATH_FETCH_REPORT_IDS = "/reportIds";
     private static final String PATH_FETCH_REPORTS = "/reports";
     
@@ -164,12 +165,14 @@ public class ReportUtilities {
         String reportName = (String) reportJson.get(REPORT_NAME);
         
         String sourceIdentifier = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + VisualConcept.VertexAttribute.IDENTIFIER);
-        String sourceType = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + AnalyticConcept.VertexAttribute.TYPE);
+//        String sourceType = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + AnalyticConcept.VertexAttribute.TYPE);
         String sourceEntityId = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + ReportConcept.VertexAttribute.ENTITY_ID);
+        String sourceEntityType = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + ReportConcept.VertexAttribute.ENTITY_TYPE);
         
         String destinationIdentifier = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + VisualConcept.VertexAttribute.IDENTIFIER);
-        String destinationType = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + AnalyticConcept.VertexAttribute.TYPE);
+//        String destinationType = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + AnalyticConcept.VertexAttribute.TYPE);
         String destinationEntityId = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + ReportConcept.VertexAttribute.ENTITY_ID);
+        String destinationEntityType = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + ReportConcept.VertexAttribute.ENTITY_TYPE);
         
         Map<String, Object> sourceOtherAttributes = (Map<String, Object>) reportJson.get(SOURCE_OTHER_ATTRIBUTES);
         Map<String, Object> destinationOtherAttributes = (Map<String, Object>) reportJson.get(DESTINATION_OTHER_ATTRIBUTES);
@@ -177,23 +180,11 @@ public class ReportUtilities {
         
         return new Report(
                 internalUserId, reportId, reportName,  
-                sourceIdentifier, sourceType, sourceEntityId, sourceOtherAttributes,
-                destinationIdentifier, destinationType, destinationEntityId, destinationOtherAttributes,
+                sourceIdentifier, sourceEntityType, sourceEntityId, sourceOtherAttributes,
+                destinationIdentifier, destinationEntityType, destinationEntityId, destinationOtherAttributes,
                 transactionAttributes
         );
     }
-    
-//    /**
-//     * Parses a JSON map as a map of attributes.
-//    */
-//    private static Map<String, Object> parseAttributes(final JSONObject attributesJson) {
-//        Map<String, Object> attributes = new HashMap<>();
-//        for (String key : attributesJson.keySet()) {
-//            Object value = attributesJson.get(key);
-//            attributes.put((String) key, value);
-//        }
-//        return attributes;
-//    }
     
     /**
      * Adds the attributes of a Report instance to the current row of a
@@ -207,11 +198,13 @@ public class ReportUtilities {
         record.set(GraphRecordStoreUtilities.SOURCE + VisualConcept.VertexAttribute.IDENTIFIER, report.getSourceIdentifier());
         record.set(GraphRecordStoreUtilities.SOURCE + AnalyticConcept.VertexAttribute.TYPE, ReportConcept.VertexType.NETWORK_ENTITY);
         record.set(GraphRecordStoreUtilities.SOURCE + ReportConcept.VertexAttribute.ENTITY_ID, report.getSourceEntityId());
+        record.set(GraphRecordStoreUtilities.SOURCE + ReportConcept.VertexAttribute.ENTITY_TYPE, report.getSourceEntityType());
         
         record.set(GraphRecordStoreUtilities.DESTINATION + VisualConcept.VertexAttribute.IDENTIFIER, report.getDestinationIdentifier());
         record.set(GraphRecordStoreUtilities.DESTINATION + AnalyticConcept.VertexAttribute.TYPE, ReportConcept.VertexType.NETWORK_ENTITY);
         record.set(GraphRecordStoreUtilities.DESTINATION + ReportConcept.VertexAttribute.ENTITY_ID, report.getDestinationEntityId());
-
+        record.set(GraphRecordStoreUtilities.DESTINATION + ReportConcept.VertexAttribute.ENTITY_TYPE, report.getDestinationEntityType());
+        
         record.set(GraphRecordStoreUtilities.TRANSACTION + VisualConcept.TransactionAttribute.IDENTIFIER, report.getReportId());
         record.set(GraphRecordStoreUtilities.TRANSACTION + AnalyticConcept.TransactionAttribute.TYPE, ReportConcept.TransactionType.COMMUNICATION);
     
@@ -246,13 +239,9 @@ public class ReportUtilities {
     }
     
     private static String getValueType(Object value) {
-        try {
-            Instant.parse(value.toString());
-            return ZonedDateTimeAttributeDescription.ATTRIBUTE_NAME;
-        } catch (DateTimeParseException e) { // Continue checking other types
-        }
-        
-        if (value instanceof Boolean) {
+        if (isDateTime(value)) {
+           return ZonedDateTimeAttributeDescription.ATTRIBUTE_NAME;
+        } else if (value instanceof Boolean) {
             return BooleanAttributeDescription.ATTRIBUTE_NAME;
         } else if (value instanceof Float) {
             return FloatAttributeDescription.ATTRIBUTE_NAME;
@@ -260,6 +249,15 @@ public class ReportUtilities {
             return IntegerAttributeDescription.ATTRIBUTE_NAME;
         } else {
             return StringAttributeDescription.ATTRIBUTE_NAME;
+        }
+    }
+    
+    private static boolean isDateTime(Object value) {
+        try {
+            Instant.parse(value.toString());
+            return true;
+        } catch (DateTimeParseException e) {
+            return false;
         }
     }
     

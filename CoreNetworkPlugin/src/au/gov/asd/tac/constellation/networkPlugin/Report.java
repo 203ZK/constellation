@@ -31,9 +31,9 @@ public class Report {
     
     public Report(
             String internalUserId, String reportId, String reportName, 
-            String sourceIdentifier, String sourceType, 
+            String sourceIdentifier, String sourceEntityType, 
             String sourceEntityId, Map<String, Object> sourceOtherAttributes,
-            String destinationIdentifier, String destinationType,
+            String destinationIdentifier, String destinationEntityType,
             String destinationEntityId, Map<String, Object> destinationOtherAttributes,
             Map<String, Object> transactionAttributes
     ) {
@@ -41,11 +41,11 @@ public class Report {
         this.reportId = reportId;
         this.reportName = reportName;
         this.sourceIdentifier = sourceIdentifier;
-        this.sourceEntityType = sourceType;
+        this.sourceEntityType = sourceEntityType;
         this.sourceEntityId = sourceEntityId;
         this.sourceOtherAttributes = sourceOtherAttributes;
         this.destinationIdentifier = destinationIdentifier;
-        this.destinationEntityType = destinationType;
+        this.destinationEntityType = destinationEntityType;
         this.destinationEntityId = destinationEntityId;
         this.destinationOtherAttributes = destinationOtherAttributes;
         this.transactionAttributes = transactionAttributes;
