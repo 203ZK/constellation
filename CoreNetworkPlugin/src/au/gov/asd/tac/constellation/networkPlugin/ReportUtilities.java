@@ -15,6 +15,7 @@ import au.gov.asd.tac.constellation.graph.processing.Record;
 import au.gov.asd.tac.constellation.graph.schema.analytic.concept.AnalyticConcept;
 import au.gov.asd.tac.constellation.graph.schema.attribute.SchemaAttribute;
 import au.gov.asd.tac.constellation.graph.schema.visual.concept.VisualConcept;
+import au.gov.asd.tac.constellation.preferences.ApplicationPreferenceKeys;
 import au.gov.asd.tac.constellation.utilities.color.ConstellationColor;
 import au.gov.asd.tac.constellation.utilities.icon.AnalyticIconProvider;
 import au.gov.asd.tac.constellation.utilities.icon.IconManager;
@@ -43,10 +44,10 @@ import org.json.JSONArray;
  */
 public class ReportUtilities {
     
-//    private static final String BASE_URL = "http://172.20.208.127:8080";
-    private static final String BASE_URL = "http://localhost:8080";
-    private static final String PATH_FETCH_REPORT_IDS = "/reportIds";
-    private static final String PATH_FETCH_REPORTS = "/reports";
+////    private static final String BASE_URL = "http://172.20.208.127:8080";
+//    private static final String BASE_URL = "http://localhost:8081";
+//    private static final String PATH_FETCH_REPORT_IDS = "/reportIds";
+//    private static final String PATH_FETCH_REPORTS = "/reports";
     
     // These fields have to be aligned with the server
     private static final String INTERNAL_USER_ID = "internal_user_id";
@@ -103,9 +104,12 @@ public class ReportUtilities {
         bodyMap.put("userId", userId);
         String requestBody = JsonUtilities.getMapAsString(bodyMap);
         
+        String baseUrl = ApplicationPreferenceKeys.DB_SERVER_BASE_ENDPOINT;
+        String endpoint = ApplicationPreferenceKeys.PATH_FETCH_REPORT_IDS;
+        
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(BASE_URL + PATH_FETCH_REPORT_IDS))
-                .timeout(Duration.ofSeconds(5))
+                .uri(URI.create(baseUrl + endpoint))
+                .timeout(Duration.ofSeconds(30))
                 .header("Content-Type", "application/json")
                 .header("X-API-KEY", apiKey)
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
@@ -130,9 +134,12 @@ public class ReportUtilities {
         bodyMap.put("reportIds", new JSONArray(reportIds));
         String requestBody = JsonUtilities.getMapAsString(bodyMap);
         
+        String baseUrl = ApplicationPreferenceKeys.DB_SERVER_BASE_ENDPOINT;
+        String endpoint = ApplicationPreferenceKeys.PATH_FETCH_REPORTS;
+        
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(BASE_URL + PATH_FETCH_REPORTS))
-                .timeout(Duration.ofSeconds(5))
+                .uri(URI.create(baseUrl + endpoint))
+                .timeout(Duration.ofSeconds(30))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build();
@@ -170,12 +177,10 @@ public class ReportUtilities {
         String sourceIdentifier = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + VisualConcept.VertexAttribute.IDENTIFIER);
         String sourceType = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + AnalyticConcept.VertexAttribute.TYPE);
         String sourceEntityId = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + ReportConcept.VertexAttribute.ENTITY_ID);
-        // String sourceEntityType = (String) reportJson.get(GraphRecordStoreUtilities.SOURCE + ReportConcept.VertexAttribute.ENTITY_TYPE);
         
         String destinationIdentifier = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + VisualConcept.VertexAttribute.IDENTIFIER);
         String destinationType = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + AnalyticConcept.VertexAttribute.TYPE);
         String destinationEntityId = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + ReportConcept.VertexAttribute.ENTITY_ID);
-        // String destinationEntityType = (String) reportJson.get(GraphRecordStoreUtilities.DESTINATION + ReportConcept.VertexAttribute.ENTITY_TYPE);
         
         Map<String, Object> sourceOtherAttributes = (Map<String, Object>) reportJson.get(SOURCE_OTHER_ATTRIBUTES);
         Map<String, Object> destinationOtherAttributes = (Map<String, Object>) reportJson.get(DESTINATION_OTHER_ATTRIBUTES);

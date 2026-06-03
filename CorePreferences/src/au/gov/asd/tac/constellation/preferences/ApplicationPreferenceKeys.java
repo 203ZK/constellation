@@ -116,6 +116,13 @@ public final class ApplicationPreferenceKeys {
      */
     public static final String ENABLE_SPELL_CHECKING = "enableSpellChecking";
     public static final boolean ENABLE_SPELL_CHECKING_DEFAULT = true;
+    
+    /**
+     * Mock server endpoints.
+     */
+    public static final String DB_SERVER_BASE_ENDPOINT = "http://localhost:8080";
+    public static final String PATH_FETCH_REPORT_IDS = "/reportIds";
+    public static final String PATH_FETCH_REPORTS = "/reports";
 
     /**
      * A directory where the webserver can write files to emulate REST requests.
