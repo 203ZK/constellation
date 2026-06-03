@@ -118,8 +118,8 @@ public class ReportUtilities {
         bodyMap.put("userId", userId);
         String requestBody = JsonUtilities.getMapAsString(bodyMap);
         
-        String baseUrl = ApplicationPreferenceKeys.DB_SERVER_BASE_ENDPOINT;
-        String endpoint = ApplicationPreferenceKeys.PATH_FETCH_REPORT_IDS;
+        String baseUrl = NetworkPluginPreferenceKeys.DB_SERVER_BASE_ENDPOINT;
+        String endpoint = NetworkPluginPreferenceKeys.PATH_FETCH_REPORT_IDS;
         
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + endpoint))
@@ -148,8 +148,8 @@ public class ReportUtilities {
         bodyMap.put("reportIds", new JSONArray(reportIds));
         String requestBody = JsonUtilities.getMapAsString(bodyMap);
         
-        String baseUrl = ApplicationPreferenceKeys.DB_SERVER_BASE_ENDPOINT;
-        String endpoint = ApplicationPreferenceKeys.PATH_FETCH_REPORTS;
+        String baseUrl = NetworkPluginPreferenceKeys.DB_SERVER_BASE_ENDPOINT;
+        String endpoint = NetworkPluginPreferenceKeys.PATH_FETCH_REPORTS;
         
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + endpoint))
