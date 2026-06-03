@@ -77,13 +77,27 @@ public class ReportUtilities {
         }
     }
     
-    public static Map<String, String> getReportOptions(final String userId, final String apiKey) throws AuthenticationException, IOException, InterruptedException {
-        String response = fetchReportOptions(userId, apiKey);
-        return parseReportOptions(response);
+    public static class NoReportsFoundException extends RuntimeException {
+        public NoReportsFoundException(String userId) {
+            super(String.format("No reports found for user ID: %s", userId));
+        }
     }
     
-    private static Map<String, String> parseReportOptions(final String reportOptionsString) throws JsonProcessingException {
+    public static Map<String, String> getReportOptions(
+            final String userId, final String apiKey
+    ) throws NoReportsFoundException, AuthenticationException, IOException, InterruptedException {
+        String response = fetchReportOptions(userId, apiKey);
+        return parseReportOptions(userId, response);
+    }
+    
+    private static Map<String, String> parseReportOptions(
+            final String userId, final String reportOptionsString
+    ) throws JsonProcessingException, NoReportsFoundException {
         List<Map<String, Object>> options = mapper.readValue(reportOptionsString, new TypeReference<List<Map<String, Object>>>(){});
+        
+        if (options.isEmpty()) {
+            throw new NoReportsFoundException(userId);
+        }
         
         Map<String, String> parsedOptions = new HashMap<>();
         

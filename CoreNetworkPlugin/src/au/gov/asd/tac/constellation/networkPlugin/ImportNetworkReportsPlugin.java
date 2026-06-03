@@ -6,6 +6,7 @@ package au.gov.asd.tac.constellation.networkPlugin;
 
 import au.gov.asd.tac.constellation.graph.processing.GraphRecordStore;
 import au.gov.asd.tac.constellation.graph.processing.RecordStore;
+import au.gov.asd.tac.constellation.networkPlugin.ReportUtilities.NoReportsFoundException;
 import au.gov.asd.tac.constellation.plugins.Plugin;
 import au.gov.asd.tac.constellation.plugins.PluginException;
 import au.gov.asd.tac.constellation.plugins.PluginInteraction;
@@ -131,10 +132,12 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         return continueImporting;
     }
     
-    private void processAuth(final String userId, final String apiKey) throws InterruptedException, PluginException {
+    private void processAuth(final String userId, final String apiKey) throws NoReportsFoundException, InterruptedException, PluginException {
         try {
             Map<String, String> reportOptions = ReportUtilities.getReportOptions(userId, apiKey);
             authState.setState(userId, reportOptions);
+        } catch (NoReportsFoundException e) {
+            throw new PluginException(PluginNotificationLevel.INFO, e.getMessage());
         } catch (IOException e) {
             throw new PluginException(PluginNotificationLevel.ERROR, ERROR_REACHING_SERVER);
         } catch (AuthenticationException e) {
