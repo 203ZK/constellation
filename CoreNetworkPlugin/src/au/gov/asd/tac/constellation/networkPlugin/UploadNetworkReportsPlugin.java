@@ -75,7 +75,7 @@ public class UploadNetworkReportsPlugin extends RecordStoreQueryPlugin implement
     
     @Override
     public String getType() {
-        return DataAccessPluginCoreType.EXPERIMENTAL;
+        return DataAccessPluginCoreType.NETWORK_PLUGINS;
     }
 
     @Override
@@ -144,6 +144,7 @@ public class UploadNetworkReportsPlugin extends RecordStoreQueryPlugin implement
                     throw new PluginException(PluginNotificationLevel.ERROR, message);
                 }
                 
+                result.add();
                 ReportPluginUtilities.addFileToRecord(headers, data, result);
                 
             } catch (FileNotFoundException ex) {

@@ -28,6 +28,7 @@ import java.util.Map;
 import javax.naming.AuthenticationException;
 import static au.gov.asd.tac.constellation.networkPlugin.ApiServerUtilities.callReportsApi;
 import static au.gov.asd.tac.constellation.networkPlugin.ApiServerUtilities.callReportIdsApi;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -180,7 +181,7 @@ public class ReportPluginUtilities {
      * Retrieves the required headers that are missing from the file.
      */
     public static List<String> verifyHeaders(final String[] headers) {
-        List<String> requiredHeaders = List.of(
+        List<String> requiredHeaders = new ArrayList<>(Arrays.asList(
                 INTERNAL_USER_ID, REPORT_ID, REPORT_NAME, 
                 GraphRecordStoreUtilities.SOURCE + VisualConcept.VertexAttribute.IDENTIFIER, 
                 GraphRecordStoreUtilities.SOURCE + AnalyticConcept.VertexAttribute.TYPE, 
@@ -188,38 +189,19 @@ public class ReportPluginUtilities {
                 GraphRecordStoreUtilities.DESTINATION + VisualConcept.VertexAttribute.IDENTIFIER, 
                 GraphRecordStoreUtilities.DESTINATION + AnalyticConcept.VertexAttribute.TYPE, 
                 GraphRecordStoreUtilities.DESTINATION + ReportConcept.VertexAttribute.ENTITY_ID
-        );
+        ));
         
         requiredHeaders.removeAll(new HashSet<>(Arrays.asList(headers)));
         return requiredHeaders;
     }
     
-    
     public static void addFileToRecord(final String[] headers, final List<String[]> data, final Record record) {
-        Map<Integer, String> headerMap = mapHeaders(headers);
-        
+        Map<String, Integer> headerMap = ReportPluginParser.mapHeaders(headers);
         for (int rowIdx = 1; rowIdx < data.size(); rowIdx++) {
             String[] dataRow = data.get(rowIdx);
-            Report report = parseReport(headerMap, dataRow);
+            Report report = ReportPluginParser.parseReport(headerMap, dataRow);
             addReportToRecord(report, record);
         }
-    }
-    
-    /**
-     * Maps the required headers from their column index to their title.
-     */
-    private static Map<Integer, String> mapHeaders(final String[] headers) {
-        Map<Integer, String> headerMap = new HashMap<>();
-        for (int colIdx = 0; colIdx < headers.length; colIdx++) {
-            headerMap.put(colIdx, headers[colIdx]);
-        }
-        return headerMap;
-    }
-    
-    private static Report parseReport(final Map<Integer, String> headerMap, final String[] row) {
-       
-        
-        return null;
     }
     
 }
