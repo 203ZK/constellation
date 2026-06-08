@@ -129,6 +129,7 @@ public class UploadNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         final RecordStore result = new GraphRecordStore();
         
         int totalRows = 0;
+        final StringBuilder sb = new StringBuilder();
         
         for (File file : files) {          
             
@@ -139,14 +140,14 @@ public class UploadNetworkReportsPlugin extends RecordStoreQueryPlugin implement
                 
                 String[] headers = data.get(0);
                 List<String> missingHeaders = ReportPluginUtilities.verifyHeaders(headers);
+                
                 if (!missingHeaders.isEmpty()) {
-                    String message = "Missing headers: " + String.join(", ", missingHeaders);
-                    throw new PluginException(PluginNotificationLevel.ERROR, message);
+                    String messageTemplate = "Missing headers for %s: %s\n";
+                    sb.append(String.format(messageTemplate, file, String.join(", ", missingHeaders)));
+                } else {
+                    result.add();
+                    ReportPluginUtilities.addFileToRecord(headers, data, result);
                 }
-                
-                result.add();
-                ReportPluginUtilities.addFileToRecord(headers, data, result);
-                
             } catch (FileNotFoundException ex) {
                 final String errorMsg = file.getPath() + " could not be found. Ignoring file during import.";
                 LOGGER.log(Level.INFO, errorMsg);
@@ -154,6 +155,11 @@ public class UploadNetworkReportsPlugin extends RecordStoreQueryPlugin implement
                 final String errorMsg = file.getPath() + " could not be parsed. Removing file during import.";
                 LOGGER.log(Level.INFO, errorMsg);
             }
+        }
+        
+        if (sb.length() > 0) {
+            final String combinedMessage = sb.toString();
+            throw new PluginException(PluginNotificationLevel.ERROR, combinedMessage);
         }
         
         return result;
