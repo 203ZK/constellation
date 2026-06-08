@@ -32,7 +32,7 @@ class AuthenticationState {
         this.reportOptions = new HashMap<>();
     }
 
-    public boolean isAuthenticated(String newUserId) {
+    public boolean checkIfAuthenticated(String newUserId) {
         return this.prevUserId.equals(newUserId);
     }
 

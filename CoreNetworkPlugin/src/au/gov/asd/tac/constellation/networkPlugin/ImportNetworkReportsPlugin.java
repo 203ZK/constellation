@@ -6,12 +6,11 @@ package au.gov.asd.tac.constellation.networkPlugin;
 
 import au.gov.asd.tac.constellation.graph.processing.GraphRecordStore;
 import au.gov.asd.tac.constellation.graph.processing.RecordStore;
-import au.gov.asd.tac.constellation.networkPlugin.ReportUtilities.NoReportsFoundException;
+import au.gov.asd.tac.constellation.networkPlugin.ReportPluginUtilities.NoReportsFoundException;
 import au.gov.asd.tac.constellation.plugins.Plugin;
 import au.gov.asd.tac.constellation.plugins.PluginException;
 import au.gov.asd.tac.constellation.plugins.PluginInteraction;
 import au.gov.asd.tac.constellation.plugins.PluginNotificationLevel;
-import au.gov.asd.tac.constellation.plugins.gui.PluginParametersDialog;
 import au.gov.asd.tac.constellation.plugins.gui.PluginParametersSwingDialog;
 import au.gov.asd.tac.constellation.plugins.parameters.PluginParameter;
 import au.gov.asd.tac.constellation.plugins.parameters.PluginParameters;
@@ -22,6 +21,7 @@ import au.gov.asd.tac.constellation.views.dataaccess.plugins.DataAccessPlugin;
 import au.gov.asd.tac.constellation.views.dataaccess.plugins.DataAccessPluginCoreType;
 import au.gov.asd.tac.constellation.views.dataaccess.templates.RecordStoreQueryPlugin;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -55,11 +55,21 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
     private static final String REPORT_ID_PARAMETER_LABEL = "Report ID";
     private static final String REPORT_ID_PARAMETER_DESCRIPTION = "Select the report ID to be visualised";
     
-    private static final AuthenticationState authState = new AuthenticationState();
-    
+    private static final String INFO_IMPORT_CANCELLED = "Import cancelled by the user.";
     private static final String ERROR_REACHING_SERVER = "Error reaching the server.";
     private static final String ERROR_AUTHENTICATION = "Authentication failed.";
     
+    private static final AuthenticationState authState = new AuthenticationState();
+    
+    @Override
+    public String getType() {
+        return DataAccessPluginCoreType.NETWORK_PLUGINS;
+    }
+
+    @Override
+    public int getPosition() {
+        return 0;
+    }
     
     @Override
     public PluginParameters createParameters() {
@@ -79,7 +89,7 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         apiKeyParameter.setVisible(false);
         parameters.addParameter(apiKeyParameter);
         
-        final PluginParameter reportIdParameter = MultiChoiceParameterType.build(REPORT_ID_PARAMETER_ID);
+        final PluginParameter<MultiChoiceParameterType.MultiChoiceParameterValue> reportIdParameter = MultiChoiceParameterType.build(REPORT_ID_PARAMETER_ID);
         reportIdParameter.setName(REPORT_ID_PARAMETER_LABEL);
         reportIdParameter.setDescription(REPORT_ID_PARAMETER_DESCRIPTION);
         reportIdParameter.setVisible(false);
@@ -91,50 +101,62 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
     @Override
     protected RecordStore query(RecordStore query, PluginInteraction interaction, PluginParameters parameters) throws InterruptedException, PluginException {
         final String userId = parameters.getStringValue(USER_ID_PARAMETER_ID).trim();
+        verifyNonBlankUserId(userId);
         
-        if (userId.isBlank()) {
-            throw new PluginException(PluginNotificationLevel.ERROR, "User ID cannot be blank.");
+        boolean isAuthenticated = authState.checkIfAuthenticated(userId);
+        if (!isAuthenticated) {
+            launchAuthDialog(parameters);
+            authenticateAndFetchReportOptions(parameters);
         }
         
-        if (!authState.isAuthenticated(userId)) {
-            if (!launchAuthDialog(parameters)) {
-                return null;
-            } 
-        }
-
-        final RecordStore result = new GraphRecordStore();
-        launchReportsDialog(userId, result, interaction, parameters);
+        launchReportsDialog(parameters);
+        
+        List<Report> reports = fetchReports(parameters);
+        final RecordStore result = createRecordWithReports(reports, interaction);
         
         return result;
     }
     
-    private boolean launchAuthDialog(PluginParameters parameters) throws InterruptedException, PluginException {
-        final PluginParameters dlgParams = new PluginParameters();
+    // ------------- General utils -------------
+    
+    private void verifyNonBlankUserId(final String userId) throws PluginException {
+        if (userId.isBlank()) {
+            throw new PluginException(PluginNotificationLevel.ERROR, "User ID cannot be blank.");
+        }
+    }
+    
+    private boolean launchDialogAndAwaitResponse(final String dialogLabel, final PluginParameters dialogParams) {
+        final PluginParametersSwingDialog dialog = new PluginParametersSwingDialog(dialogLabel, dialogParams);
+        dialog.showAndWait();
+        return dialog.isAccepted();
+    }
+    
+    // ------------- Handling auth + fetching report options -------------
+    
+    private void launchAuthDialog(PluginParameters parameters) throws PluginException {
+        final PluginParameters dialogParams = createAuthDialogParameters(parameters);
+        final boolean willProceed = launchDialogAndAwaitResponse("Input API Key", dialogParams);
+        if (!willProceed) {
+            throw new PluginException(PluginNotificationLevel.INFO, INFO_IMPORT_CANCELLED);
+        }
+    }
+    
+    private PluginParameters createAuthDialogParameters(final PluginParameters parameters) {
+        final PluginParameters dialogParams = new PluginParameters();
         final PluginParameter<StringParameterValue> apiKeyParameter = 
                 (PluginParameter<StringParameterValue>) parameters.getParameters().get(API_KEY_PARAMETER_ID);
         
         apiKeyParameter.setVisible(true);
-        dlgParams.addParameter(apiKeyParameter);
-        
-        final PluginParametersSwingDialog dialog = new PluginParametersSwingDialog("Input API Key", dlgParams);
-        dialog.showAndWait();
-        final boolean isOk = PluginParametersDialog.OK.equals(dialog.getResult());
-        
-        boolean continueImporting = false;
-        
-        if (isOk) {
-            final String userId = parameters.getStringValue(USER_ID_PARAMETER_ID).trim();
-            final String apiKey = dlgParams.getStringValue(API_KEY_PARAMETER_ID).trim();
-            processAuth(userId, apiKey);
-            continueImporting = true;
-        }
-        
-        return continueImporting;
+        dialogParams.addParameter(apiKeyParameter);
+        return dialogParams;
     }
     
-    private void processAuth(final String userId, final String apiKey) throws NoReportsFoundException, InterruptedException, PluginException {
+    private void authenticateAndFetchReportOptions(final PluginParameters parameters) throws InterruptedException, PluginException {
+        final String userId = parameters.getStringValue(USER_ID_PARAMETER_ID).trim();
+        final String apiKey = parameters.getStringValue(API_KEY_PARAMETER_ID).trim();
+        
         try {
-            Map<String, String> reportOptions = ReportUtilities.getReportOptions(userId, apiKey);
+            Map<String, String> reportOptions = ReportPluginUtilities.getReportOptions(userId, apiKey);
             authState.setState(userId, reportOptions);
         } catch (NoReportsFoundException e) {
             throw new PluginException(PluginNotificationLevel.INFO, e.getMessage());
@@ -146,60 +168,70 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         }
     }
     
-    private void launchReportsDialog(String userId, RecordStore result, PluginInteraction interaction, PluginParameters parameters) throws InterruptedException, PluginException {
-        final PluginParameters dlgParams = new PluginParameters();
+    // ------------- Handling selection of reports to visualise -------------
+    
+    private PluginParameters createReportsDialogParameters(final PluginParameters parameters) {
+        final PluginParameters dialogParams = new PluginParameters();
         final PluginParameter<MultiChoiceParameterType.MultiChoiceParameterValue> reportIdParam = 
                     (PluginParameter<MultiChoiceParameterType.MultiChoiceParameterValue>) parameters.getParameters().get(REPORT_ID_PARAMETER_ID);
 
         MultiChoiceParameterType.setOptions(reportIdParam, authState.getOptions());
         
         reportIdParam.setVisible(true);
-        dlgParams.addParameter(reportIdParam);
+        dialogParams.addParameter(reportIdParam);
         
-        final PluginParametersSwingDialog dialog = new PluginParametersSwingDialog("Select report(s)", dlgParams);
-        dialog.showAndWait();
-        final boolean isOk = PluginParametersDialog.OK.equals(dialog.getResult());
-        
-        if (isOk) {
-            List<String> selectedReportIds = MultiChoiceParameterType.getChoices(reportIdParam)
-                    .stream()
-                    .map(choice -> choice.trim())
-                    .map(authState::getReportId)
-                    .filter(Objects::nonNull)
-                    .toList();
-            
-            processReports(userId, selectedReportIds, result, interaction);
+        return dialogParams;
+    }
+    
+    private void launchReportsDialog(PluginParameters parameters) throws PluginException {
+        final PluginParameters dialogParams = createReportsDialogParameters(parameters);
+        final boolean willProceed = launchDialogAndAwaitResponse("Select report(s)", dialogParams);
+        if (!willProceed) {
+            throw new PluginException(PluginNotificationLevel.INFO, INFO_IMPORT_CANCELLED);
         }
     }
     
-    private void processReports(String userId, List<String> reportIds, RecordStore result, PluginInteraction interaction) throws InterruptedException, PluginException {        
-        final List<Report> reports;
+    private List<Report> fetchReports(final PluginParameters parameters) throws InterruptedException, PluginException {
+        final List<String> selectedReportIds = parseUserSelectedReportIds(parameters);
         
+        List<Report> reports = new ArrayList<>();
         try {
-            reports = ReportUtilities.getReports(userId, reportIds);
+            final String userId = parameters.getStringValue(USER_ID_PARAMETER_ID).trim();
+            reports = ReportPluginUtilities.getReports(userId, selectedReportIds);
         } catch (IOException e) {
             throw new PluginException(PluginNotificationLevel.ERROR, ERROR_REACHING_SERVER);
         }
-
-        int currentStep = 0;
+        
+        return reports;
+    }
+    
+    private List<String> parseUserSelectedReportIds(final PluginParameters parameters) {
+        final PluginParameter<MultiChoiceParameterType.MultiChoiceParameterValue> reportIdParam = 
+                    (PluginParameter<MultiChoiceParameterType.MultiChoiceParameterValue>) parameters.getParameters().get(REPORT_ID_PARAMETER_ID);
+        
+        List<String> selectedReportIds = MultiChoiceParameterType.getChoices(reportIdParam).stream()
+                .map(choice -> choice.trim())
+                .map(authState::getReportId)
+                .filter(Objects::nonNull).toList();
+       
+        return selectedReportIds;
+    }
+    
+    private RecordStore createRecordWithReports(List<Report> reports, PluginInteraction interaction) throws InterruptedException {
+        final RecordStore result = new GraphRecordStore();
+        
         final int numReports = reports.size();
-
+        int currentStep = 0;
+        
         for (Report report : reports) {
             result.add();
-            ReportUtilities.addReportToRecord(report, result);
+            ReportPluginUtilities.addReportToRecord(report, result);
+            
             final String progressString = "Processing report " + (currentStep + 1) + "/" + numReports;
             interaction.setProgress(currentStep++, numReports, progressString, true);
         }
-    }
-
-    @Override
-    public String getType() {
-        return DataAccessPluginCoreType.EXPERIMENTAL;
-    }
-
-    @Override
-    public int getPosition() {
-        return 0;
+        
+        return result;
     }
     
 }

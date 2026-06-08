@@ -50,18 +50,18 @@ public class ReportConcept extends SchemaConcept {
                         .create()
                         .build();
         
-        public static final SchemaAttribute ENTITY_TYPE = 
-                new SchemaAttribute.Builder(GraphElementType.VERTEX, StringAttributeDescription.ATTRIBUTE_NAME, "EntityType")
-                        .setDescription("The type of network entity")
-                        .create()
-                        .build();
+//        public static final SchemaAttribute ENTITY_TYPE = 
+//                new SchemaAttribute.Builder(GraphElementType.VERTEX, StringAttributeDescription.ATTRIBUTE_NAME, "EntityType")
+//                        .setDescription("The type of network entity")
+//                        .create()
+//                        .build();
     }
     
     @Override
     public Collection<SchemaAttribute> getSchemaAttributes() {
         final List<SchemaAttribute> schemaAttributes = new ArrayList<>();
         schemaAttributes.add(VertexAttribute.ENTITY_ID);
-        schemaAttributes.add(VertexAttribute.ENTITY_TYPE);
+//        schemaAttributes.add(VertexAttribute.ENTITY_TYPE);
         return Collections.unmodifiableCollection(schemaAttributes);
     }
     

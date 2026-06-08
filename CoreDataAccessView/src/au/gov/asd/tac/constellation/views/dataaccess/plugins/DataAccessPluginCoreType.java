@@ -32,6 +32,7 @@ public class DataAccessPluginCoreType implements DataAccessPluginType {
     public static final String CLEAN = "Clean";
     public static final String WORKFLOW = "Workflow";
     public static final String UTILITY = "Utility";
+    public static final String NETWORK_PLUGINS = "Network Communication Plugins";
     public static final String EXPERIMENTAL = "Experimental";
     public static final String DEVELOPER = "Developer";
     public static final String ENRICHMENT = "Enrichment";
@@ -46,6 +47,7 @@ public class DataAccessPluginCoreType implements DataAccessPluginType {
         pluginTypeList.add(new PositionalDataAccessPluginType(CLEAN, 3000));
         pluginTypeList.add(new PositionalDataAccessPluginType(WORKFLOW, 4000));
         pluginTypeList.add(new PositionalDataAccessPluginType(UTILITY, 5000));
+        pluginTypeList.add(new PositionalDataAccessPluginType(NETWORK_PLUGINS, Integer.MAX_VALUE - 2));
         pluginTypeList.add(new PositionalDataAccessPluginType(EXPERIMENTAL, Integer.MAX_VALUE - 1));
         pluginTypeList.add(new PositionalDataAccessPluginType(DEVELOPER, Integer.MAX_VALUE));
 
