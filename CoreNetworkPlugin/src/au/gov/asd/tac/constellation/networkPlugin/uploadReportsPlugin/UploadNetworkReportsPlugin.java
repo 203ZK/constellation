@@ -123,13 +123,13 @@ public class UploadNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         
         final ImportFileParser parser = PARSERS.get(fileType);
         
-        final List<List<String[]>> validFiles = new ArrayList<>();
+        final List<ReportFile> validReportFiles = new ArrayList<>();
         final StringBuilder errorMessages = new StringBuilder();
         
         for (File file : files) {
             try {
-                final List<String[]> processedData = processFileData(file, parser);
-                validFiles.add(processedData);
+                final ReportFile reportFile = processFileData(file, parser);
+                validReportFiles.add(reportFile);
             } catch (MissingHeadersException e) {
                 errorMessages.append(e.getMessage());
             } catch (IOException e) {
@@ -142,7 +142,7 @@ public class UploadNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         }
         
         final RecordStore result = new GraphRecordStore();
-        addFilesToRecord(validFiles, result);
+        addFilesToRecord(validReportFiles, result);
 
         return result;
     }

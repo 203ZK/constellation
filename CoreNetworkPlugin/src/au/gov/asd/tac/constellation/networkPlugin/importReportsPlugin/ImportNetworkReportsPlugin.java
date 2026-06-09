@@ -224,7 +224,6 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         int currentStep = 0;
         
         for (Report report : reports) {
-            result.add();
             ImportReportsPluginUtilities.addReportToRecord(report, result);
             
             final String progressString = "Processing report " + (currentStep + 1) + "/" + numReports;
