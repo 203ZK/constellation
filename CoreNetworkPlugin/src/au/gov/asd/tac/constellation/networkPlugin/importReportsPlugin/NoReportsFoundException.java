@@ -5,8 +5,7 @@
 package au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin;
 
 /**
- *
- * @author Intern-1003972
+ * Thrown when no reports are returned by the API server for that user ID.
  */
 public class NoReportsFoundException extends RuntimeException {
     public NoReportsFoundException(String userId) {

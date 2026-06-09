@@ -7,8 +7,7 @@ package au.gov.asd.tac.constellation.networkPlugin.uploadReportsPlugin;
 import java.util.List;
 
 /**
- *
- * @author Intern-1003972
+ * Thrown when the uploaded file is missing mandatory headers.
  */
 public class MissingHeadersException extends RuntimeException {
     private static final String MESSAGE_TEMPLATE = "Missing headers for %s: %s\n";
