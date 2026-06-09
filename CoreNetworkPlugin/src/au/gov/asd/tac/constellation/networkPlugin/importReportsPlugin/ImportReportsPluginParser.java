@@ -30,21 +30,23 @@ public class ImportReportsPluginParser {
     
     private static final ObjectMapper mapper = new ObjectMapper();
     
-    public static Map<String, String> parseReportOptions(final String reportOptionsString) throws JsonProcessingException {
-        List<Map<String, Object>> options = mapper.readValue(reportOptionsString, new TypeReference<List<Map<String, Object>>>(){});
+    public static List<ReportOption> parseReportOptions(final String reportOptionsString) throws JsonProcessingException {
+        List<Map<String, Object>> jsonOptions = mapper.readValue(reportOptionsString, new TypeReference<List<Map<String, Object>>>(){});
         
-        Map<String, String> parsedOptions = new HashMap<>();
+        List<ReportOption> parsedOptions = new ArrayList<>();
         
-        for (Map<String, Object> option : options) {
-            String reportId = (String) option.get(REPORT_ID);
-            String reportName = (String) option.get(REPORT_NAME);
-            parsedOptions.put(
-                    new ReportOption(reportId, reportName).getDisplayName(), 
-                    reportId
-            );
+        for (Map<String, Object> jsonOption : jsonOptions) {
+            final ReportOption parsedOption = parseReportOption(jsonOption);
+            parsedOptions.add(parsedOption);
         }
         
         return parsedOptions;
+    }
+    
+    private static ReportOption parseReportOption(Map<String, Object> jsonOption) {
+        final String reportId = (String) jsonOption.get(REPORT_ID);
+        final String reportName = (String) jsonOption.get(REPORT_NAME);
+        return new ReportOption(reportId, reportName);
     }
     
     public static List<Report> parseReports(final String reportsString) throws JsonProcessingException {

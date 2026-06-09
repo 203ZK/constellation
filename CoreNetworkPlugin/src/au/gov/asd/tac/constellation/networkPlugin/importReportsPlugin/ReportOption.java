@@ -4,18 +4,30 @@
  */
 package au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin;
 
+import java.util.List;
+
 /**
 * A particular dropdown option containing both a report's name and its ID.
 */
 public class ReportOption {
-   private final String id, name;
+    private static final String LABEL_TEMPLATE = "%s (ID: %s)";
+    
+    private final String reportId, reportName;
 
-   public ReportOption(String id, String name) { 
-       this.id = id;
-       this.name = name;
-   }
-
-   public String getDisplayName() {
-       return this.name + " (ID: " + this.id + ")";
-   }
+    public ReportOption(String reportId, String reportName) { 
+        this.reportId = reportId;
+        this.reportName = reportName;
+    }
+    
+    public String getReportId() {
+        return this.reportId;
+    }
+    
+    public boolean isSelected(List<String> selectedLabels) {
+        return selectedLabels.contains(this.getDisplayName());
+    }
+   
+    public String getDisplayName() {
+         return String.format(LABEL_TEMPLATE, this.reportName, reportId);
+    }
 }

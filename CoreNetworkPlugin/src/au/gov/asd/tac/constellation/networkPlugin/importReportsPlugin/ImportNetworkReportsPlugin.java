@@ -110,9 +110,18 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         }
         
         launchReportsDialog(parameters);
-        
         List<Report> reports = fetchReports(parameters);
-        final RecordStore result = createRecordWithReports(reports, interaction);
+        final int numReports = reports.size();
+        
+        final RecordStore result = new GraphRecordStore();
+        int currentStep = 0;
+        
+        for (Report report : reports) {
+            ImportReportsPluginUtilities.addReportToRecord(report, result);
+            
+            final String progressString = "Processing report " + (currentStep + 1) + "/" + numReports;
+            interaction.setProgress(currentStep++, numReports, progressString, true);
+        }
         
         return result;
     }
@@ -156,7 +165,7 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         final String apiKey = parameters.getStringValue(API_KEY_PARAMETER_ID).trim();
         
         try {
-            Map<String, String> reportOptions = ImportReportsPluginUtilities.getReportOptions(userId, apiKey);
+            List<ReportOption> reportOptions = ImportReportsPluginUtilities.getReportOptions(userId, apiKey);
             authState.setState(userId, reportOptions);
         } catch (NoReportsFoundException e) {
             throw new PluginException(PluginNotificationLevel.INFO, e.getMessage());
@@ -175,7 +184,7 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         final PluginParameter<MultiChoiceParameterType.MultiChoiceParameterValue> reportIdParam = 
                     (PluginParameter<MultiChoiceParameterType.MultiChoiceParameterValue>) parameters.getParameters().get(REPORT_ID_PARAMETER_ID);
 
-        MultiChoiceParameterType.setOptions(reportIdParam, authState.getOptions());
+        MultiChoiceParameterType.setOptions(reportIdParam, authState.getAllOptionLabels());
         
         reportIdParam.setVisible(true);
         dialogParams.addParameter(reportIdParam);
@@ -209,28 +218,10 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         final PluginParameter<MultiChoiceParameterType.MultiChoiceParameterValue> reportIdParam = 
                     (PluginParameter<MultiChoiceParameterType.MultiChoiceParameterValue>) parameters.getParameters().get(REPORT_ID_PARAMETER_ID);
         
-        List<String> selectedReportIds = MultiChoiceParameterType.getChoices(reportIdParam).stream()
-                .map(choice -> choice.trim())
-                .map(authState::getReportId)
-                .filter(Objects::nonNull).toList();
+        List<String> selectedReportOptionLabels = MultiChoiceParameterType.getChoices(reportIdParam);
+        List<String> selectedReportIds = authState.getSelectedReportIds(selectedReportOptionLabels);
        
         return selectedReportIds;
-    }
-    
-    private RecordStore createRecordWithReports(List<Report> reports, PluginInteraction interaction) throws InterruptedException {
-        final RecordStore result = new GraphRecordStore();
-        
-        final int numReports = reports.size();
-        int currentStep = 0;
-        
-        for (Report report : reports) {
-            ImportReportsPluginUtilities.addReportToRecord(report, result);
-            
-            final String progressString = "Processing report " + (currentStep + 1) + "/" + numReports;
-            interaction.setProgress(currentStep++, numReports, progressString, true);
-        }
-        
-        return result;
     }
     
 }

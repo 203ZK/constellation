@@ -37,12 +37,12 @@ import static au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin.Imp
  */
 public class ImportReportsPluginUtilities {
     
-    public static Map<String, String> getReportOptions(
+    public static List<ReportOption> getReportOptions(
             final String userId, final String apiKey
     ) throws NoReportsFoundException, AuthenticationException, IOException, InterruptedException {
         
         String jsonResponse = callReportIdsApi(userId, apiKey);
-        Map<String, String> reportOptions = parseReportOptions(jsonResponse);
+        List<ReportOption> reportOptions = parseReportOptions(jsonResponse);
         
         if (reportOptions.isEmpty()) {
             throw new NoReportsFoundException(userId);

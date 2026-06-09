@@ -5,10 +5,7 @@
 package au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin;
 
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Maintains the authentication state of the plugin, which comprises the previously 
@@ -16,14 +13,14 @@ import java.util.Map;
  */
 public class AuthenticationState {
     private String prevUserId;
-    private Map<String, String> reportOptions;
+    private List<ReportOption> reportOptions;
 
     public AuthenticationState() {
         this.prevUserId = "";
-        this.reportOptions = new HashMap<>();
+        this.reportOptions = new ArrayList<>();
     }
 
-    public void setState(String authUserId, Map<String, String> options) {
+    public void setState(String authUserId, List<ReportOption> options) {
         this.prevUserId = authUserId;
         this.reportOptions = options;
     }
@@ -36,14 +33,19 @@ public class AuthenticationState {
     public boolean checkIfAuthenticated(String newUserId) {
         return this.prevUserId.equals(newUserId);
     }
-
-    public List<String> getOptions() {
-        final List<String> options = new ArrayList<>(reportOptions.keySet());
-        options.sort(Comparator.naturalOrder());
-        return options;
-    }
     
-    public String getReportId(String option) {
-        return this.reportOptions.get(option);
+    public List<String> getAllOptionLabels() {
+        return this.reportOptions.stream()
+                .map(ReportOption::getDisplayName)
+                .sorted()
+                .toList();
+    }
+
+    public List<String> getSelectedReportIds(final List<String> selectedLabels) {
+        return this.reportOptions.stream()
+                .filter((option) -> option.isSelected(selectedLabels))
+                .map(ReportOption::getReportId)
+                .sorted()
+                .toList();
     }
 }

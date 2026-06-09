@@ -48,7 +48,7 @@ public class AuthenticationStateNGTest {
     @Test
     public void testConstructor() {
         assertFalse(authState.checkIfAuthenticated("anyUserId"));
-        assertTrue(authState.getOptions().isEmpty());
+        assertTrue(authState.getSelectedReportIds().isEmpty());
     }
     
     @Test
@@ -63,7 +63,7 @@ public class AuthenticationStateNGTest {
         final List<String> expectedOptions = List.of("field1", "field2");
         
         assertTrue(authState.checkIfAuthenticated(userId));
-        assertEquals(authState.getOptions(), expectedOptions);
+        assertEquals(authState.getSelectedReportIds(), expectedOptions);
     }
     
     @Test
@@ -76,7 +76,7 @@ public class AuthenticationStateNGTest {
         authState.clearState();
         
         assertTrue(authState.checkIfAuthenticated(""));
-        assertTrue(authState.getOptions().isEmpty());
+        assertTrue(authState.getSelectedReportIds().isEmpty());
     }
     
     @Test
