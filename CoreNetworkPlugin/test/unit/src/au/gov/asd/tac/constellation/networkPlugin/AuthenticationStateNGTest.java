@@ -4,6 +4,7 @@
  */
 package au.gov.asd.tac.constellation.networkPlugin;
 
+import au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin.AuthenticationState;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

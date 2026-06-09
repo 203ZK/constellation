@@ -4,6 +4,7 @@
  */
 package au.gov.asd.tac.constellation.networkPlugin;
 
+import au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin.ImportReportsPluginUtilities;
 import au.gov.asd.tac.constellation.graph.processing.GraphRecordStore;
 import au.gov.asd.tac.constellation.graph.processing.RecordStore;
 import java.util.HashMap;
@@ -56,7 +57,7 @@ public class ReportPluginUtilitiesNGTest {
                 attributes
         );
         
-        ReportPluginUtilities.addReportToRecord(testReport, record);
+        ImportReportsPluginUtilities.addReportToRecord(testReport, record);
 
         assertEquals(record.get("source.ExtraField1<string>"), null);
     }
@@ -73,7 +74,7 @@ public class ReportPluginUtilitiesNGTest {
                 attributes
         );
         
-        ReportPluginUtilities.addReportToRecord(testReport, record);
+        ImportReportsPluginUtilities.addReportToRecord(testReport, record);
 
         assertEquals(record.get("source.ExtraField1<string>"), "extra_value");
     }
@@ -90,7 +91,7 @@ public class ReportPluginUtilitiesNGTest {
                 attributes
         );
         
-        ReportPluginUtilities.addReportToRecord(testReport, record);
+        ImportReportsPluginUtilities.addReportToRecord(testReport, record);
 
         assertEquals(record.get("source.ExtraField1<boolean>"), "false");
     }
@@ -107,7 +108,7 @@ public class ReportPluginUtilitiesNGTest {
                 attributes
         );
         
-        ReportPluginUtilities.addReportToRecord(testReport, record);
+        ImportReportsPluginUtilities.addReportToRecord(testReport, record);
 
         assertEquals(record.get("source.ExtraField1<integer>"), "1");
     }
@@ -124,7 +125,7 @@ public class ReportPluginUtilitiesNGTest {
                 attributes
         );
         
-        ReportPluginUtilities.addReportToRecord(testReport, record);
+        ImportReportsPluginUtilities.addReportToRecord(testReport, record);
 
         assertEquals(record.get("source.ExtraField1<double>"), "-1.0");
     }
@@ -141,7 +142,7 @@ public class ReportPluginUtilitiesNGTest {
                 attributes
         );
         
-        ReportPluginUtilities.addReportToRecord(testReport, record);
+        ImportReportsPluginUtilities.addReportToRecord(testReport, record);
 
         assertEquals(record.get("source.ExtraField1<datetime>"), "2026-06-08T16:41:00.123Z");
     }
@@ -158,7 +159,7 @@ public class ReportPluginUtilitiesNGTest {
         );
         
         try {
-            ReportPluginUtilities.addReportToRecord(testReport, record);
+            ImportReportsPluginUtilities.addReportToRecord(testReport, record);
         } catch (Exception e) {
             Assert.fail("Expected no exception but got: " + e.getMessage());
         }
@@ -180,7 +181,7 @@ public class ReportPluginUtilitiesNGTest {
                 attributes
         );
         
-        ReportPluginUtilities.addReportToRecord(testReport, record);
+        ImportReportsPluginUtilities.addReportToRecord(testReport, record);
         
         assertEquals(record.get("source.Identifier"), "123.123.123.123");
         assertEquals(record.get("source.Type"), "user_endpoint");

@@ -4,6 +4,10 @@
  */
 package au.gov.asd.tac.constellation.networkPlugin;
 
+import au.gov.asd.tac.constellation.networkPlugin.networkConnectionsPlugin.NetworkConnectionsPlugin;
+import au.gov.asd.tac.constellation.networkPlugin.uploadReportsPlugin.UploadNetworkReportsPlugin;
+import au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin.ImportNetworkReportsPlugin;
+
 /**
  * Network Plugin Registry.
  */

@@ -4,6 +4,7 @@
  */
 package au.gov.asd.tac.constellation.networkPlugin;
 
+import au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin.ImportReportsPluginParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.HashMap;
 import java.util.List;
@@ -59,7 +60,7 @@ public class ReportPluginParserNGTest {
                 """;
         
         final Map<String, String> actual = 
-                ReportPluginParser.parseReportOptions(testReportOptionsString);
+                ImportReportsPluginParser.parseReportOptions(testReportOptionsString);
         
         final Map<String, String> expected = new HashMap<>();
         expected.put("Report #12345 (ID: r12345)", "r12345");
@@ -83,9 +84,8 @@ public class ReportPluginParserNGTest {
                 ]
                 """;
         
-        Assert.assertThrows(
-                JsonProcessingException.class,
-                () -> ReportPluginParser.parseReportOptions(testReportOptionsString)
+        Assert.assertThrows(JsonProcessingException.class,
+                () -> ImportReportsPluginParser.parseReportOptions(testReportOptionsString)
         );
     }
     
@@ -100,7 +100,7 @@ public class ReportPluginParserNGTest {
                 """;
         
         final Map<String, String> actual = 
-                ReportPluginParser.parseReportOptions(testReportOptionsString);
+                ImportReportsPluginParser.parseReportOptions(testReportOptionsString);
         
         final Map<String, String> expected = new HashMap<>();
         expected.put("null (ID: r12345)", "r12345");
@@ -119,7 +119,7 @@ public class ReportPluginParserNGTest {
                 """;
         
         final Map<String, String> actual = 
-                ReportPluginParser.parseReportOptions(testReportOptionsString);
+                ImportReportsPluginParser.parseReportOptions(testReportOptionsString);
         
         final Map<String, String> expected = new HashMap<>();
         expected.put("Report #12345 (ID: null)", null);
@@ -140,7 +140,7 @@ public class ReportPluginParserNGTest {
                 """;
         
         final Map<String, String> actual = 
-                ReportPluginParser.parseReportOptions(testReportOptionsString);
+                ImportReportsPluginParser.parseReportOptions(testReportOptionsString);
         
         final Map<String, String> expected = new HashMap<>();
         expected.put("Report #12345 (ID: r12345)", "r12345");
@@ -184,7 +184,7 @@ public class ReportPluginParserNGTest {
                 ]
                 """;
        
-        final List<Report> actual = ReportPluginParser.parseReports(testReportsString);
+        final List<Report> actual = ImportReportsPluginParser.parseReports(testReportsString);
         
         assertEquals(1, actual.size());
         
@@ -229,7 +229,7 @@ public class ReportPluginParserNGTest {
                 ]
                 """;
        
-        final List<Report> actual = ReportPluginParser.parseReports(testReportsString);
+        final List<Report> actual = ImportReportsPluginParser.parseReports(testReportsString);
         final Report actualReport = actual.get(0);
         
         assertTrue(actualReport.getSourceOtherAttributes().isEmpty());
@@ -258,7 +258,7 @@ public class ReportPluginParserNGTest {
                 ]
                 """;
        
-        final List<Report> actual = ReportPluginParser.parseReports(testReportsString);
+        final List<Report> actual = ImportReportsPluginParser.parseReports(testReportsString);
         final Report actualReport = actual.get(0);
         
         assertEquals(actualReport.getSourceEntityType(), null);

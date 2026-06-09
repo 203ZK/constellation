@@ -1,7 +1,8 @@
-package au.gov.asd.tac.constellation.networkPlugin;
+package au.gov.asd.tac.constellation.networkPlugin.networkConnectionsPlugin;
 
 import au.gov.asd.tac.constellation.graph.node.GraphNode;
 import au.gov.asd.tac.constellation.graph.node.plugins.SimplePluginAction;
+import au.gov.asd.tac.constellation.networkPlugin.NetworkPluginRegistry;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
 import org.openide.awt.ActionReferences;

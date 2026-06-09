@@ -2,11 +2,11 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package au.gov.asd.tac.constellation.networkPlugin;
+package au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin;
 
 import au.gov.asd.tac.constellation.graph.processing.GraphRecordStore;
 import au.gov.asd.tac.constellation.graph.processing.RecordStore;
-import au.gov.asd.tac.constellation.networkPlugin.ReportPluginUtilities.NoReportsFoundException;
+import au.gov.asd.tac.constellation.networkPlugin.Report;
 import au.gov.asd.tac.constellation.plugins.Plugin;
 import au.gov.asd.tac.constellation.plugins.PluginException;
 import au.gov.asd.tac.constellation.plugins.PluginInteraction;
@@ -156,7 +156,7 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         final String apiKey = parameters.getStringValue(API_KEY_PARAMETER_ID).trim();
         
         try {
-            Map<String, String> reportOptions = ReportPluginUtilities.getReportOptions(userId, apiKey);
+            Map<String, String> reportOptions = ImportReportsPluginUtilities.getReportOptions(userId, apiKey);
             authState.setState(userId, reportOptions);
         } catch (NoReportsFoundException e) {
             throw new PluginException(PluginNotificationLevel.INFO, e.getMessage());
@@ -197,7 +197,7 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         List<Report> reports = new ArrayList<>();
         try {
             final String userId = parameters.getStringValue(USER_ID_PARAMETER_ID).trim();
-            reports = ReportPluginUtilities.getReports(userId, selectedReportIds);
+            reports = ImportReportsPluginUtilities.getReports(userId, selectedReportIds);
         } catch (IOException e) {
             throw new PluginException(PluginNotificationLevel.ERROR, ERROR_REACHING_SERVER);
         }
@@ -225,7 +225,7 @@ public class ImportNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         
         for (Report report : reports) {
             result.add();
-            ReportPluginUtilities.addReportToRecord(report, result);
+            ImportReportsPluginUtilities.addReportToRecord(report, result);
             
             final String progressString = "Processing report " + (currentStep + 1) + "/" + numReports;
             interaction.setProgress(currentStep++, numReports, progressString, true);

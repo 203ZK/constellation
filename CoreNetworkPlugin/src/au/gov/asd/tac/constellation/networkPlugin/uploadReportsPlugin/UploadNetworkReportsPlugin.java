@@ -2,16 +2,17 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package au.gov.asd.tac.constellation.networkPlugin;
+package au.gov.asd.tac.constellation.networkPlugin.uploadReportsPlugin;
 
+import au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin.ImportReportsPluginUtilities;
 import au.gov.asd.tac.constellation.graph.processing.GraphRecordStore;
 import au.gov.asd.tac.constellation.graph.processing.RecordStore;
+import static au.gov.asd.tac.constellation.networkPlugin.uploadReportsPlugin.UploadReportsPluginUtilities.addFilesToRecord;
 import au.gov.asd.tac.constellation.plugins.Plugin;
 import au.gov.asd.tac.constellation.plugins.PluginException;
 import au.gov.asd.tac.constellation.plugins.PluginInteraction;
 import au.gov.asd.tac.constellation.plugins.PluginNotificationLevel;
 import au.gov.asd.tac.constellation.plugins.importexport.delimited.parser.ImportFileParser;
-import au.gov.asd.tac.constellation.plugins.importexport.delimited.parser.InputSource;
 import au.gov.asd.tac.constellation.plugins.parameters.ParameterChange;
 import au.gov.asd.tac.constellation.plugins.parameters.PluginParameter;
 import au.gov.asd.tac.constellation.plugins.parameters.PluginParameters;
@@ -23,14 +24,11 @@ import au.gov.asd.tac.constellation.views.dataaccess.plugins.DataAccessPlugin;
 import au.gov.asd.tac.constellation.views.dataaccess.plugins.DataAccessPluginCoreType;
 import au.gov.asd.tac.constellation.views.dataaccess.templates.RecordStoreQueryPlugin;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
@@ -47,8 +45,6 @@ import org.openide.util.lookup.ServiceProviders;
 })
 @NbBundle.Messages("UploadNetworkReportsPlugin=Upload Network Reports")
 public class UploadNetworkReportsPlugin extends RecordStoreQueryPlugin implements DataAccessPlugin {
-    
-    private static final Logger LOGGER = Logger.getLogger(UploadNetworkReportsPlugin.class.getName());
     
     public static final String FILE_TYPE_PARAMETER_ID = PluginParameter.buildId(UploadNetworkReportsPlugin.class, "file_type");
     public static final String FILE_TYPE_PARAMETER_LABEL = "File Type";
@@ -123,45 +119,31 @@ public class UploadNetworkReportsPlugin extends RecordStoreQueryPlugin implement
     @Override
     protected RecordStore query(RecordStore query, PluginInteraction interaction, PluginParameters parameters) throws InterruptedException, PluginException {
         final String fileType = parameters.getParameters().get(FILE_TYPE_PARAMETER_ID).getStringValue();
-        final ImportFileParser parser = PARSERS.get(fileType);
         final List<File> files = (List<File>) parameters.getParameters().get(FILE_NAME_PARAMETER_ID).getObjectValue();
         
-        final RecordStore result = new GraphRecordStore();
+        final ImportFileParser parser = PARSERS.get(fileType);
         
-        int totalRows = 0;
-        final StringBuilder sb = new StringBuilder();
+        final List<List<String[]>> validFiles = new ArrayList<>();
+        final StringBuilder errorMessages = new StringBuilder();
         
-        for (File file : files) {          
-            
+        for (File file : files) {
             try {
-                List<String[]> data = parser.parse(new InputSource(file), parameters);
-                int dataSize = data.size() - 1; // Must include headers
-                totalRows = totalRows + Integer.max(0, dataSize);
-                
-                String[] headers = data.get(0);
-                List<String> missingHeaders = ReportPluginParser.verifyHeaders(headers);
-                
-                if (!missingHeaders.isEmpty()) {
-                    String messageTemplate = "Missing headers for %s: %s\n";
-                    sb.append(String.format(messageTemplate, file, String.join(", ", missingHeaders)));
-                } else {
-                    result.add();
-                    ReportPluginUtilities.addFileToRecord(headers, data, result);
-                }
-            } catch (FileNotFoundException ex) {
-                final String errorMsg = file.getPath() + " could not be found. Ignoring file during import.";
-                LOGGER.log(Level.INFO, errorMsg);
-            } catch (IOException ex) {
-                final String errorMsg = file.getPath() + " could not be parsed. Removing file during import.";
-                LOGGER.log(Level.INFO, errorMsg);
+                final List<String[]> processedData = ImportReportsPluginUtilities.processFileData(file, parser);
+                validFiles.add(processedData);
+            } catch (MissingHeadersException e) {
+                errorMessages.append(e.getMessage());
+            } catch (IOException e) {
+                errorMessages.append(file.getPath()).append(" could not be parsed.");
             }
         }
         
-        if (sb.length() > 0) {
-            final String combinedMessage = sb.toString();
-            throw new PluginException(PluginNotificationLevel.ERROR, combinedMessage);
+        if (!errorMessages.isEmpty()) {
+            throw new PluginException(PluginNotificationLevel.ERROR, errorMessages.toString());
         }
         
+        final RecordStore result = new GraphRecordStore();
+        addFilesToRecord(validFiles, result);
+
         return result;
     }
     

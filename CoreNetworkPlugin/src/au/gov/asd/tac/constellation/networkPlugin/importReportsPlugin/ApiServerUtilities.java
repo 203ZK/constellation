@@ -2,8 +2,9 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package au.gov.asd.tac.constellation.networkPlugin;
+package au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin;
 
+import au.gov.asd.tac.constellation.networkPlugin.NetworkPluginPreferenceKeys;
 import au.gov.asd.tac.constellation.utilities.json.JsonUtilities;
 import java.io.IOException;
 import java.net.HttpURLConnection;

@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package au.gov.asd.tac.constellation.networkPlugin;
+package au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -14,7 +14,7 @@ import java.util.Map;
  * Maintains the authentication state of the plugin, which comprises the previously 
  * authenticated user ID, and the list of report options for that particular user.
  */
-class AuthenticationState {
+public class AuthenticationState {
     private String prevUserId;
     private Map<String, String> reportOptions;
 

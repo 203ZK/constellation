@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package au.gov.asd.tac.constellation.networkPlugin;
+package au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin;
 
 import au.gov.asd.tac.constellation.graph.GraphElementType;
 import au.gov.asd.tac.constellation.graph.attribute.BooleanAttributeDescription;
@@ -16,10 +16,10 @@ import au.gov.asd.tac.constellation.graph.processing.RecordStore;
 import au.gov.asd.tac.constellation.graph.schema.analytic.concept.AnalyticConcept;
 import au.gov.asd.tac.constellation.graph.schema.attribute.SchemaAttribute;
 import au.gov.asd.tac.constellation.graph.schema.visual.concept.VisualConcept;
-import static au.gov.asd.tac.constellation.networkPlugin.ApiServerUtilities.callReportIdsApi;
-import static au.gov.asd.tac.constellation.networkPlugin.ApiServerUtilities.callReportsApi;
-import static au.gov.asd.tac.constellation.networkPlugin.ReportPluginParser.parseReportOptions;
-import static au.gov.asd.tac.constellation.networkPlugin.ReportPluginParser.parseReports;
+import au.gov.asd.tac.constellation.networkPlugin.Report;
+import au.gov.asd.tac.constellation.networkPlugin.ReportConcept;
+import static au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin.ApiServerUtilities.callReportIdsApi;
+import static au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin.ApiServerUtilities.callReportsApi;
 import au.gov.asd.tac.constellation.utilities.color.ConstellationColor;
 import au.gov.asd.tac.constellation.utilities.icon.AnalyticIconProvider;
 import au.gov.asd.tac.constellation.utilities.icon.IconManager;
@@ -29,22 +29,18 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import javax.naming.AuthenticationException;
-import au.gov.asd.tac.constellation.networkPlugin.Report;
-import au.gov.asd.tac.constellation.networkPlugin.ReportConcept;
-import static au.gov.asd.tac.constellation.networkPlugin.ReportPluginParser.parseReportOptions;
-import static au.gov.asd.tac.constellation.networkPlugin.ReportPluginParser.parseReports;
-import java.util.ArrayList;
+import static au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin.ImportReportsPluginParser.parseReportOptions;
+import static au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin.ImportReportsPluginParser.parseReports;
+import static au.gov.asd.tac.constellation.networkPlugin.uploadReportsPlugin.UploadReportsPluginUtilities.verifyHeaders;
+import au.gov.asd.tac.constellation.networkPlugin.uploadReportsPlugin.MissingHeadersException;
+import au.gov.asd.tac.constellation.plugins.importexport.delimited.parser.ImportFileParser;
+import au.gov.asd.tac.constellation.plugins.importexport.delimited.parser.InputSource;
+import java.io.File;
 
 /**
  * Report Plugin Utilities.
  */
-public class ReportPluginUtilities {
-    
-    public static class NoReportsFoundException extends RuntimeException {
-        public NoReportsFoundException(String userId) {
-            super(String.format("No reports found for user ID: %s", userId));
-        }
-    }
+public class ImportReportsPluginUtilities {
     
     public static Map<String, String> getReportOptions(
             final String userId, final String apiKey
@@ -63,6 +59,12 @@ public class ReportPluginUtilities {
     public static List<Report> getReports(final String userId, final List<String> reportIds) throws IOException, InterruptedException {
         String jsonResponse = callReportsApi(userId, reportIds);
         return parseReports(jsonResponse);
+    }
+    
+    public static List<String[]> processFileData(final File file, final ImportFileParser parser) throws MissingHeadersException, IOException {
+        List<String[]> data = parser.parse(new InputSource(file), null);
+        verifyHeaders(file.getPath(), data);
+        return data;
     }
     
     /**
@@ -162,15 +164,6 @@ public class ReportPluginUtilities {
             return true;
         } catch (DateTimeParseException e) {
             return false;
-        }
-    }
-    
-    public static void addFileToRecord(final String[] headers, final List<String[]> data, final RecordStore record) {
-        Map<String, Integer> headerMap = ReportPluginParser.mapHeaders(headers);
-        for (int rowIdx = 1; rowIdx < data.size(); rowIdx++) {
-            String[] dataRow = data.get(rowIdx);
-            Report report = ReportPluginParser.parseReport(headerMap, dataRow);
-            addReportToRecord(report, record);
         }
     }
     
