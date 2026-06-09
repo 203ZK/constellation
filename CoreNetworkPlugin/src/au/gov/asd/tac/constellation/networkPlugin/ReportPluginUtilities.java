@@ -6,15 +6,18 @@ package au.gov.asd.tac.constellation.networkPlugin;
 
 import au.gov.asd.tac.constellation.graph.GraphElementType;
 import au.gov.asd.tac.constellation.graph.attribute.BooleanAttributeDescription;
-import au.gov.asd.tac.constellation.graph.attribute.FloatAttributeDescription;
+import au.gov.asd.tac.constellation.graph.attribute.DoubleAttributeDescription;
 import au.gov.asd.tac.constellation.graph.attribute.IntegerAttributeDescription;
 import au.gov.asd.tac.constellation.graph.attribute.StringAttributeDescription;
 import au.gov.asd.tac.constellation.graph.attribute.ZonedDateTimeAttributeDescription;
 import au.gov.asd.tac.constellation.graph.processing.GraphRecordStoreUtilities;
 import au.gov.asd.tac.constellation.graph.processing.Record;
+import au.gov.asd.tac.constellation.graph.processing.RecordStore;
 import au.gov.asd.tac.constellation.graph.schema.analytic.concept.AnalyticConcept;
 import au.gov.asd.tac.constellation.graph.schema.attribute.SchemaAttribute;
 import au.gov.asd.tac.constellation.graph.schema.visual.concept.VisualConcept;
+import static au.gov.asd.tac.constellation.networkPlugin.ApiServerUtilities.callReportIdsApi;
+import static au.gov.asd.tac.constellation.networkPlugin.ApiServerUtilities.callReportsApi;
 import static au.gov.asd.tac.constellation.networkPlugin.ReportPluginParser.parseReportOptions;
 import static au.gov.asd.tac.constellation.networkPlugin.ReportPluginParser.parseReports;
 import au.gov.asd.tac.constellation.utilities.color.ConstellationColor;
@@ -26,39 +29,16 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import javax.naming.AuthenticationException;
-import static au.gov.asd.tac.constellation.networkPlugin.ApiServerUtilities.callReportsApi;
-import static au.gov.asd.tac.constellation.networkPlugin.ApiServerUtilities.callReportIdsApi;
+import au.gov.asd.tac.constellation.networkPlugin.Report;
+import au.gov.asd.tac.constellation.networkPlugin.ReportConcept;
+import static au.gov.asd.tac.constellation.networkPlugin.ReportPluginParser.parseReportOptions;
+import static au.gov.asd.tac.constellation.networkPlugin.ReportPluginParser.parseReports;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
 
 /**
  * Report Plugin Utilities.
  */
 public class ReportPluginUtilities {
-    
-    // These fields have to be aligned with the server
-    private static final String INTERNAL_USER_ID = "internal_user_id";
-    private static final String REPORT_ID = "report_id";
-    private static final String REPORT_NAME = "report_name";
-//    private static final String ATTRIBUTES_LABEL = "Attributes";
-    
-    /**
-     * A particular dropdown option containing both a report's name and its ID.
-     */
-    public static class ReportOption {
-        private final String id, name;
-        
-        public ReportOption(String id, String name) { 
-            this.id = id;
-            this.name = name;
-        }
-        
-        public String getDisplayName() {
-            return this.name + " (ID: " + this.id + ")";
-        }
-    }
     
     public static class NoReportsFoundException extends RuntimeException {
         public NoReportsFoundException(String userId) {
@@ -71,7 +51,13 @@ public class ReportPluginUtilities {
     ) throws NoReportsFoundException, AuthenticationException, IOException, InterruptedException {
         
         String jsonResponse = callReportIdsApi(userId, apiKey);
-        return parseReportOptions(userId, jsonResponse);
+        Map<String, String> reportOptions = parseReportOptions(jsonResponse);
+        
+        if (reportOptions.isEmpty()) {
+            throw new NoReportsFoundException(userId);
+        }
+        
+        return reportOptions;
     }
     
     public static List<Report> getReports(final String userId, final List<String> reportIds) throws IOException, InterruptedException {
@@ -86,7 +72,9 @@ public class ReportPluginUtilities {
      * @param report the Report instance to be added.
      * @param record the Record to add the Report to.
      */
-    public static void addReportToRecord(final Report report, final Record record) {
+    public static void addReportToRecord(final Report report, final RecordStore record) {
+        record.add();
+        
         addSourceVertexToRecord(report, record);
         setAttributesInRecord(record, report.getSourceOtherAttributes(), GraphRecordStoreUtilities.SOURCE);
         
@@ -129,7 +117,7 @@ public class ReportPluginUtilities {
         record.set(GraphRecordStoreUtilities.TRANSACTION + AnalyticConcept.TransactionAttribute.TYPE, ReportConcept.TransactionType.COMMUNICATION);
         record.set(GraphRecordStoreUtilities.TRANSACTION + VisualConcept.TransactionAttribute.SELECTED, true);
     }
-             
+    
     private static void setAttributesInRecord(final Record record, Map<String, Object> attributeMap, String attributeType) {
         GraphElementType elementType = attributeType.equals(GraphRecordStoreUtilities.TRANSACTION) 
                 ? GraphElementType.TRANSACTION : GraphElementType.VERTEX;
@@ -159,8 +147,8 @@ public class ReportPluginUtilities {
            return ZonedDateTimeAttributeDescription.ATTRIBUTE_NAME;
         } else if (value instanceof Boolean) {
             return BooleanAttributeDescription.ATTRIBUTE_NAME;
-        } else if (value instanceof Float) {
-            return FloatAttributeDescription.ATTRIBUTE_NAME;
+        } else if (value instanceof Double) {
+            return DoubleAttributeDescription.ATTRIBUTE_NAME;
         } else if (value instanceof Integer) {
             return IntegerAttributeDescription.ATTRIBUTE_NAME;
         } else {
@@ -177,25 +165,7 @@ public class ReportPluginUtilities {
         }
     }
     
-    /**
-     * Retrieves the required headers that are missing from the file.
-     */
-    public static List<String> verifyHeaders(final String[] headers) {
-        List<String> requiredHeaders = new ArrayList<>(Arrays.asList(
-                INTERNAL_USER_ID, REPORT_ID, REPORT_NAME, 
-                GraphRecordStoreUtilities.SOURCE + VisualConcept.VertexAttribute.IDENTIFIER, 
-                GraphRecordStoreUtilities.SOURCE + AnalyticConcept.VertexAttribute.TYPE, 
-                GraphRecordStoreUtilities.SOURCE + ReportConcept.VertexAttribute.ENTITY_ID, 
-                GraphRecordStoreUtilities.DESTINATION + VisualConcept.VertexAttribute.IDENTIFIER, 
-                GraphRecordStoreUtilities.DESTINATION + AnalyticConcept.VertexAttribute.TYPE, 
-                GraphRecordStoreUtilities.DESTINATION + ReportConcept.VertexAttribute.ENTITY_ID
-        ));
-        
-        requiredHeaders.removeAll(new HashSet<>(Arrays.asList(headers)));
-        return requiredHeaders;
-    }
-    
-    public static void addFileToRecord(final String[] headers, final List<String[]> data, final Record record) {
+    public static void addFileToRecord(final String[] headers, final List<String[]> data, final RecordStore record) {
         Map<String, Integer> headerMap = ReportPluginParser.mapHeaders(headers);
         for (int rowIdx = 1; rowIdx < data.size(); rowIdx++) {
             String[] dataRow = data.get(rowIdx);

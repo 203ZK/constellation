@@ -4,7 +4,6 @@
  */
 package au.gov.asd.tac.constellation.networkPlugin;
 
-import au.gov.asd.tac.constellation.graph.GraphWriteMethods;
 import au.gov.asd.tac.constellation.graph.schema.Schema;
 import au.gov.asd.tac.constellation.graph.schema.SchemaFactory;
 import au.gov.asd.tac.constellation.graph.schema.analytic.AnalyticSchemaFactory;
@@ -48,6 +47,7 @@ public class ReportSchemaFactory extends AnalyticSchemaFactory {
         registeredConcepts.add(ConstellationViewsConcept.class);
         registeredConcepts.add(VisualConcept.class);
         registeredConcepts.add(AnalyticConcept.class);
+        registeredConcepts.add(ReportConcept.class);
         return Collections.unmodifiableSet(registeredConcepts);
     }
     

@@ -11,10 +11,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Utilities for parsing report-related objects.
@@ -29,19 +30,27 @@ public class ReportPluginParser {
     
     private static final String PREFIX_SOURCE = "source_";
     private static final String PREFIX_DESTINATION = "destination_";
-    private static final Set<String> METADATA_FIELDS = Set.of(INTERNAL_USER_ID, REPORT_ID, REPORT_NAME);
     
     private static final ObjectMapper mapper = new ObjectMapper();
     
-    public static Map<String, String> parseReportOptions(
-            final String userId, final String reportOptionsString
-    ) throws JsonProcessingException, ReportPluginUtilities.NoReportsFoundException {
+    /**
+     * A particular dropdown option containing both a report's name and its ID.
+     */
+    public static class ReportOption {
+        private final String id, name;
         
-        List<Map<String, Object>> options = mapper.readValue(reportOptionsString, new TypeReference<List<Map<String, Object>>>(){});
-        
-        if (options.isEmpty()) {
-            throw new ReportPluginUtilities.NoReportsFoundException(userId);
+        public ReportOption(String id, String name) { 
+            this.id = id;
+            this.name = name;
         }
+        
+        public String getDisplayName() {
+            return this.name + " (ID: " + this.id + ")";
+        }
+    }
+    
+    public static Map<String, String> parseReportOptions(final String reportOptionsString) throws JsonProcessingException {
+        List<Map<String, Object>> options = mapper.readValue(reportOptionsString, new TypeReference<List<Map<String, Object>>>(){});
         
         Map<String, String> parsedOptions = new HashMap<>();
         
@@ -49,7 +58,7 @@ public class ReportPluginParser {
             String reportId = (String) option.get(REPORT_ID);
             String reportName = (String) option.get(REPORT_NAME);
             parsedOptions.put(
-                    new ReportPluginUtilities.ReportOption(reportId, reportName).getDisplayName(), 
+                    new ReportOption(reportId, reportName).getDisplayName(), 
                     reportId
             );
         }
@@ -168,6 +177,24 @@ public class ReportPluginParser {
     
     private static String getFieldValueFromRow(final Map<String, Integer> headerMap, final String[] row, final String field) {
         return row[headerMap.get(field)];
+    }
+    
+    /**
+     * Retrieves the required headers that are missing from the file.
+     */
+    public static List<String> verifyHeaders(final String[] headers) {
+        List<String> requiredHeaders = new ArrayList<>(Arrays.asList(
+                INTERNAL_USER_ID, REPORT_ID, REPORT_NAME, 
+                GraphRecordStoreUtilities.SOURCE + VisualConcept.VertexAttribute.IDENTIFIER, 
+                GraphRecordStoreUtilities.SOURCE + AnalyticConcept.VertexAttribute.TYPE, 
+                GraphRecordStoreUtilities.SOURCE + ReportConcept.VertexAttribute.ENTITY_ID, 
+                GraphRecordStoreUtilities.DESTINATION + VisualConcept.VertexAttribute.IDENTIFIER, 
+                GraphRecordStoreUtilities.DESTINATION + AnalyticConcept.VertexAttribute.TYPE, 
+                GraphRecordStoreUtilities.DESTINATION + ReportConcept.VertexAttribute.ENTITY_ID
+        ));
+        
+        requiredHeaders.removeAll(new HashSet<>(Arrays.asList(headers)));
+        return requiredHeaders;
     }
     
     /**

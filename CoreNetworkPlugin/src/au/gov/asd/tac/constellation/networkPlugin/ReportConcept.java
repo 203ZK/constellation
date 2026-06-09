@@ -10,10 +10,7 @@ import au.gov.asd.tac.constellation.graph.schema.analytic.concept.AnalyticConcep
 import au.gov.asd.tac.constellation.graph.schema.attribute.SchemaAttribute;
 import au.gov.asd.tac.constellation.graph.schema.concept.SchemaConcept;
 import au.gov.asd.tac.constellation.graph.schema.type.SchemaTransactionType;
-import au.gov.asd.tac.constellation.graph.schema.type.SchemaVertexType;
 import au.gov.asd.tac.constellation.utilities.color.ConstellationColor;
-import au.gov.asd.tac.constellation.utilities.icon.AnalyticIconProvider;
-import au.gov.asd.tac.constellation.utilities.icon.IconManager;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -49,29 +46,13 @@ public class ReportConcept extends SchemaConcept {
                         .setDescription("The readable identifier of the entity (e.g., user_ABC123)")
                         .create()
                         .build();
-        
-//        public static final SchemaAttribute ENTITY_TYPE = 
-//                new SchemaAttribute.Builder(GraphElementType.VERTEX, StringAttributeDescription.ATTRIBUTE_NAME, "EntityType")
-//                        .setDescription("The type of network entity")
-//                        .create()
-//                        .build();
     }
     
     @Override
     public Collection<SchemaAttribute> getSchemaAttributes() {
         final List<SchemaAttribute> schemaAttributes = new ArrayList<>();
         schemaAttributes.add(VertexAttribute.ENTITY_ID);
-//        schemaAttributes.add(VertexAttribute.ENTITY_TYPE);
         return Collections.unmodifiableCollection(schemaAttributes);
-    }
-    
-    public static class VertexType {
-        public static final SchemaVertexType NETWORK_ENTITY = new SchemaVertexType.Builder("Network Entity")
-                .setDescription("A node representing an entity on a network (e.g., a user or a server).")
-                .setColor(ConstellationColor.NAVY)
-                .setForegroundIcon(AnalyticIconProvider.DESKTOP)
-                .setBackgroundIcon(IconManager.getIcon("Flat Circle"))
-                .build();
     }
     
     public static class TransactionType {
@@ -79,13 +60,6 @@ public class ReportConcept extends SchemaConcept {
                 .setDescription("A communication session between two network nodes.")
                 .setColor(ConstellationColor.MAGENTA)
                 .build();
-    }
-    
-    @Override
-    public List<SchemaVertexType> getSchemaVertexTypes() {
-        final List<SchemaVertexType> schemaVertexTypes = new ArrayList<>();
-        schemaVertexTypes.add(VertexType.NETWORK_ENTITY);
-        return Collections.unmodifiableList(schemaVertexTypes);
     }
     
     @Override

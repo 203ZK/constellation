@@ -139,7 +139,7 @@ public class UploadNetworkReportsPlugin extends RecordStoreQueryPlugin implement
                 totalRows = totalRows + Integer.max(0, dataSize);
                 
                 String[] headers = data.get(0);
-                List<String> missingHeaders = ReportPluginUtilities.verifyHeaders(headers);
+                List<String> missingHeaders = ReportPluginParser.verifyHeaders(headers);
                 
                 if (!missingHeaders.isEmpty()) {
                     String messageTemplate = "Missing headers for %s: %s\n";

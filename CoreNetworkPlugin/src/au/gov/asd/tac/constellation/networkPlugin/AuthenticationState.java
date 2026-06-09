@@ -5,6 +5,7 @@
 package au.gov.asd.tac.constellation.networkPlugin;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +30,7 @@ class AuthenticationState {
 
     public void clearState() {
         this.prevUserId = "";
-        this.reportOptions = new HashMap<>();
+        this.reportOptions.clear();
     }
 
     public boolean checkIfAuthenticated(String newUserId) {
@@ -37,7 +38,9 @@ class AuthenticationState {
     }
 
     public List<String> getOptions() {
-        return new ArrayList<>(reportOptions.keySet());
+        final List<String> options = new ArrayList<>(reportOptions.keySet());
+        options.sort(Comparator.naturalOrder());
+        return options;
     }
     
     public String getReportId(String option) {
