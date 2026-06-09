@@ -31,11 +31,6 @@ import java.util.Map;
 import javax.naming.AuthenticationException;
 import static au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin.ImportReportsPluginParser.parseReportOptions;
 import static au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin.ImportReportsPluginParser.parseReports;
-import static au.gov.asd.tac.constellation.networkPlugin.uploadReportsPlugin.UploadReportsPluginUtilities.verifyHeaders;
-import au.gov.asd.tac.constellation.networkPlugin.uploadReportsPlugin.MissingHeadersException;
-import au.gov.asd.tac.constellation.plugins.importexport.delimited.parser.ImportFileParser;
-import au.gov.asd.tac.constellation.plugins.importexport.delimited.parser.InputSource;
-import java.io.File;
 
 /**
  * Report Plugin Utilities.
@@ -59,12 +54,6 @@ public class ImportReportsPluginUtilities {
     public static List<Report> getReports(final String userId, final List<String> reportIds) throws IOException, InterruptedException {
         String jsonResponse = callReportsApi(userId, reportIds);
         return parseReports(jsonResponse);
-    }
-    
-    public static List<String[]> processFileData(final File file, final ImportFileParser parser) throws MissingHeadersException, IOException {
-        List<String[]> data = parser.parse(new InputSource(file), null);
-        verifyHeaders(file.getPath(), data);
-        return data;
     }
     
     /**

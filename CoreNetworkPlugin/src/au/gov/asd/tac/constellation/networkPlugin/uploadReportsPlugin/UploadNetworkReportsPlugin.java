@@ -4,10 +4,10 @@
  */
 package au.gov.asd.tac.constellation.networkPlugin.uploadReportsPlugin;
 
-import au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin.ImportReportsPluginUtilities;
 import au.gov.asd.tac.constellation.graph.processing.GraphRecordStore;
 import au.gov.asd.tac.constellation.graph.processing.RecordStore;
 import static au.gov.asd.tac.constellation.networkPlugin.uploadReportsPlugin.UploadReportsPluginUtilities.addFilesToRecord;
+import static au.gov.asd.tac.constellation.networkPlugin.uploadReportsPlugin.UploadReportsPluginUtilities.processFileData;
 import au.gov.asd.tac.constellation.plugins.Plugin;
 import au.gov.asd.tac.constellation.plugins.PluginException;
 import au.gov.asd.tac.constellation.plugins.PluginInteraction;
@@ -128,7 +128,7 @@ public class UploadNetworkReportsPlugin extends RecordStoreQueryPlugin implement
         
         for (File file : files) {
             try {
-                final List<String[]> processedData = ImportReportsPluginUtilities.processFileData(file, parser);
+                final List<String[]> processedData = processFileData(file, parser);
                 validFiles.add(processedData);
             } catch (MissingHeadersException e) {
                 errorMessages.append(e.getMessage());

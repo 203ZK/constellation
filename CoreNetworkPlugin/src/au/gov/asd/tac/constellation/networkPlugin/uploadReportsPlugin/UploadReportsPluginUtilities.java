@@ -13,6 +13,10 @@ import au.gov.asd.tac.constellation.networkPlugin.Report;
 import au.gov.asd.tac.constellation.networkPlugin.ReportConcept;
 import static au.gov.asd.tac.constellation.networkPlugin.importReportsPlugin.ImportReportsPluginUtilities.addReportToRecord;
 import static au.gov.asd.tac.constellation.networkPlugin.uploadReportsPlugin.UploadReportsPluginParser.parseReport;
+import au.gov.asd.tac.constellation.plugins.importexport.delimited.parser.ImportFileParser;
+import au.gov.asd.tac.constellation.plugins.importexport.delimited.parser.InputSource;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -30,6 +34,12 @@ public class UploadReportsPluginUtilities {
     private static final String INTERNAL_USER_ID = "internal_user_id";
     private static final String REPORT_ID = "report_id";
     private static final String REPORT_NAME = "report_name";
+    
+    public static List<String[]> processFileData(final File file, final ImportFileParser parser) throws MissingHeadersException, IOException {
+        List<String[]> data = parser.parse(new InputSource(file), null);
+        verifyHeaders(file.getPath(), data);
+        return data;
+    }
     
     /**
      * Retrieves the required headers that are missing from the file.
